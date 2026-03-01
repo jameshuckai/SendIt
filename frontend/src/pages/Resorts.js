@@ -375,20 +375,36 @@ export default function Resorts() {
                     </p>
                   )}
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleBucketList(run.id);
-                  }}
-                  className="p-2"
-                  data-testid={`bucket-list-toggle-${run.id}`}
-                >
-                  <Heart 
-                    size={20} 
-                    style={{ color: bucketListIds.includes(run.id) ? '#FF1744' : 'rgba(255,255,255,0.3)' }}
-                    fill={bucketListIds.includes(run.id) ? '#FF1744' : 'none'}
-                  />
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Completed checkmark */}
+                  {completedRunIds.includes(run.id) && (
+                    <div 
+                      className="p-2 rounded-full"
+                      style={{ backgroundColor: 'rgba(0, 230, 118, 0.2)' }}
+                      data-testid={`completed-${run.id}`}
+                    >
+                      <Check 
+                        size={20} 
+                        style={{ color: '#00E676' }}
+                      />
+                    </div>
+                  )}
+                  {/* Bucket list heart */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleBucketList(run.id);
+                    }}
+                    className="p-2"
+                    data-testid={`bucket-list-toggle-${run.id}`}
+                  >
+                    <Heart 
+                      size={20} 
+                      style={{ color: bucketListIds.includes(run.id) ? '#FF1744' : 'rgba(255,255,255,0.3)' }}
+                      fill={bucketListIds.includes(run.id) ? '#FF1744' : 'none'}
+                    />
+                  </button>
+                </div>
               </div>
             </GlassCard>
           ))
