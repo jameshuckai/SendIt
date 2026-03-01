@@ -314,11 +314,14 @@ export default function Resorts() {
             ))}
           </div>
         </div>
+        )}
       </div>
 
-      {/* Run List */}
+      {/* Content List */}
       <div className="px-6 space-y-3">
-        {filteredRuns.length === 0 ? (
+        {viewMode === 'runs' ? (
+          // Runs List
+          filteredRuns.length === 0 ? (
           <GlassCard className="p-6 text-center">
             <p className="text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
               No runs found. Try adjusting your filters.
