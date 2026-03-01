@@ -52,7 +52,7 @@ function AppRoutes() {
       <Route path="/onboarding" element={user ? <Onboarding /> : <Navigate to="/login" replace />} />
       
       <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-      <Route path="/runs" element={<ProtectedRoute><RunDirectory /></ProtectedRoute>} />
+      <Route path="/resorts" element={<ProtectedRoute><Resorts /></ProtectedRoute>} />
       <Route path="/runs/:id" element={<ProtectedRoute><RunDetail /></ProtectedRoute>} />
       <Route path="/log" element={<ProtectedRoute><LogRun /></ProtectedRoute>} />
       <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
