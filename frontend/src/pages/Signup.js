@@ -39,11 +39,13 @@ export default function Signup() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <img 
-            src="https://customer-assets.emergentagent.com/job_1e46d1c6-0952-4bbf-8568-c3dd1ef58235/artifacts/jrbl08is_SendItLogoPNG.png" 
-            alt="Sendit Logo" 
-            className="h-24 w-24"
-          />
+          <div className="bg-white rounded-2xl p-3">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_1e46d1c6-0952-4bbf-8568-c3dd1ef58235/artifacts/jrbl08is_SendItLogoPNG.png" 
+              alt="Sendit Logo" 
+              className="h-20 w-20"
+            />
+          </div>
         </div>
 
         <GlassCard className="p-8">
