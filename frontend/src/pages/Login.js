@@ -15,13 +15,21 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await signIn(email, password);
-    
-    if (error) {
-      toast.error(error.message);
+    try {
+      const { data, error } = await signIn(email, password);
+      
+      if (error) {
+        // Handle error safely without reading response body twice
+        const errorMessage = typeof error === 'string' ? error : error.message || 'Login failed';
+        toast.error(errorMessage);
+        setLoading(false);
+      } else {
+        navigate('/home');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      toast.error('An unexpected error occurred. Please try again.');
       setLoading(false);
-    } else {
-      navigate('/home');
     }
   };
 
