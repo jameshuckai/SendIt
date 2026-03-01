@@ -6,18 +6,31 @@ import { BottomNav } from '@/components/BottomNav';
 import { GlassCard } from '@/components/GlassCard';
 import { DifficultyBadge } from '@/components/DifficultyBadge';
 import { supabase } from '@/lib/supabase';
-import { Search, Heart } from 'lucide-react';
+import { Search, Heart, Mountain } from 'lucide-react';
 
-export default function RunDirectory() {
+export default function Resorts() {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  
+  // Resort and view mode state
+  const [resorts, setResorts] = useState([]);
+  const [selectedResort, setSelectedResort] = useState(null);
+  const [viewMode, setViewMode] = useState('runs'); // 'runs' or 'lifts'
+  
+  // Runs state
   const [runs, setRuns] = useState([]);
   const [filteredRuns, setFilteredRuns] = useState([]);
+  const [bucketListIds, setBucketListIds] = useState([]);
+  
+  // Lifts state
+  const [lifts, setLifts] = useState([]);
+  const [filteredLifts, setFilteredLifts] = useState([]);
+  
+  // Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('');
   const [mountainFilter, setMountainFilter] = useState('');
   const [runTypeFilter, setRunTypeFilter] = useState('');
-  const [bucketListIds, setBucketListIds] = useState([]);
 
   useEffect(() => {
     loadRuns();
