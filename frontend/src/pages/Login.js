@@ -3,10 +3,12 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { GlassCard } from '@/components/GlassCard';
 import { toast } from 'sonner';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
