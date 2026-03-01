@@ -73,13 +73,29 @@ export function AuthProvider({ children }) {
   };
 
   const signUp = async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    return { data, error };
+    try {
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          emailRedirectTo: window.location.origin
+        }
+      });
+      return { data, error };
+    } catch (err) {
+      console.error('SignUp catch error:', err);
+      return { data: null, error: err };
+    }
   };
 
   const signIn = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    return { data, error };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      return { data, error };
+    } catch (err) {
+      console.error('SignIn catch error:', err);
+      return { data: null, error: err };
+    }
   };
 
   const signOut = async () => {
