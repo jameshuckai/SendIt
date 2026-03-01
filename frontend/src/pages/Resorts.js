@@ -33,21 +33,59 @@ export default function Resorts() {
   const [runTypeFilter, setRunTypeFilter] = useState('');
 
   useEffect(() => {
-    loadRuns();
-    loadBucketList();
+    loadResorts();
   }, []);
 
   useEffect(() => {
-    filterRuns();
-  }, [runs, searchQuery, difficultyFilter, mountainFilter, runTypeFilter]);
+    if (selectedResort) {
+      loadRuns();
+      loadLifts();
+      loadBucketList();
+    }
+  }, [selectedResort]);
 
-  const loadRuns = async () => {
+  useEffect(() => {
+    if (viewMode === 'runs') {
+      filterRuns();
+    } else {
+      filterLifts();
+    }
+  }, [runs, lifts, searchQuery, difficultyFilter, mountainFilter, runTypeFilter, viewMode]);
+
+  const loadResorts = async () => {
     const { data } = await supabase
-      .from('runs')
+      .from('ski_areas')
       .select('*')
       .order('name');
     
+    if (data && data.length > 0) {
+      setResorts(data);
+      setSelectedResort(data[0]); // Auto-select first resort
+    }
+  };
+
+  const loadRuns = async () => {
+    if (!selectedResort) return;
+    
+    const { data } = await supabase
+      .from('runs')
+      .select('*')
+      .eq('ski_area_id', selectedResort.id)
+      .order('name');
+    
     if (data) setRuns(data);
+  };
+
+  const loadLifts = async () => {
+    if (!selectedResort) return;
+    
+    const { data } = await supabase
+      .from('lifts')
+      .select('*')
+      .eq('ski_area_id', selectedResort.id)
+      .order('name');
+    
+    if (data) setLifts(data);
   };
 
   const loadBucketList = async () => {
