@@ -174,18 +174,85 @@ export default function Resorts() {
       {/* Header */}
       <div className="p-6 pb-4">
         <h1 className="text-2xl font-bold text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-          Run Directory
+          Resorts
         </h1>
+
+        {/* Resort Selector */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2 text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Select Resort
+          </label>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {resorts.map((resort) => (
+              <GlassCard
+                key={resort.id}
+                data-testid={`resort-${resort.id}`}
+                onClick={() => setSelectedResort(resort)}
+                className="flex-shrink-0 px-4 py-3 cursor-pointer transition-all"
+                style={{
+                  border: selectedResort?.id === resort.id ? '2px solid #00B4D8' : '1px solid rgba(255,255,255,0.08)',
+                  minWidth: '200px'
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <Mountain size={20} style={{ color: '#00B4D8' }} />
+                  <div>
+                    <div className="text-sm font-semibold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                      {resort.name}
+                    </div>
+                    {resort.region && (
+                      <div className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                        {resort.region}, {resort.country}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </GlassCard>
+            ))}
+          </div>
+        </div>
+
+        {/* View Mode Toggle */}
+        <div className="mb-4">
+          <div className="flex gap-2">
+            <button
+              data-testid="view-runs"
+              onClick={() => setViewMode('runs')}
+              className="flex-1 py-2 rounded-full text-sm font-semibold transition-all"
+              style={{
+                backgroundColor: viewMode === 'runs' ? '#00B4D8' : 'rgba(255,255,255,0.05)',
+                color: viewMode === 'runs' ? '#000000' : 'rgba(255,255,255,0.7)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                fontFamily: 'Manrope, sans-serif'
+              }}
+            >
+              Runs ({runs.length})
+            </button>
+            <button
+              data-testid="view-lifts"
+              onClick={() => setViewMode('lifts')}
+              className="flex-1 py-2 rounded-full text-sm font-semibold transition-all"
+              style={{
+                backgroundColor: viewMode === 'lifts' ? '#00B4D8' : 'rgba(255,255,255,0.05)',
+                color: viewMode === 'lifts' ? '#000000' : 'rgba(255,255,255,0.7)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                fontFamily: 'Manrope, sans-serif'
+              }}
+            >
+              Lifts ({lifts.length})
+            </button>
+          </div>
+        </div>
 
         {/* Search */}
         <div className="relative mb-4">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.4)' }} />
           <input
-            data-testid="run-search"
+            data-testid="search-input"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search runs..."
+            placeholder={`Search ${viewMode}...`}
             className="w-full pl-10 pr-4 py-3 rounded-xl border-0 focus:outline-none focus:ring-2"
             style={{
               backgroundColor: '#1A2126',
