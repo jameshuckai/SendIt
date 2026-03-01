@@ -6,7 +6,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { GlassCard } from '@/components/GlassCard';
 import { DifficultyBadge } from '@/components/DifficultyBadge';
 import { supabase } from '@/lib/supabase';
-import { Search, Heart, Mountain } from 'lucide-react';
+import { Search, Heart, Mountain, Check } from 'lucide-react';
 
 export default function Resorts() {
   const { profile } = useAuth();
