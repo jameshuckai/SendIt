@@ -88,23 +88,20 @@ export default function LogRun() {
     setSaving(false);
 
     if (error) {
-      toast.error('Failed to log run');
-      console.error(error);
+      console.error('Error logging run:', error);
+      toast.error('Failed to log run: ' + (error.message || 'Unknown error'));
     } else {
-      const toastCard = document.createElement('div');
-      toastCard.style.cssText = `
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-left: 3px solid #00E676;
-        border-radius: 12px;
-        padding: 12px 16px;
-        color: white;
-        font-family: Manrope, sans-serif;
-      `;
-      toastCard.textContent = 'Logged! Nice run 🤙';
-      
-      toast.custom((t) => toastCard);
+      toast.success('Logged! Nice run 🤙', {
+        style: {
+          background: 'rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderLeft: '3px solid #00E676',
+          borderRadius: '12px',
+          color: 'white',
+          fontFamily: 'Manrope, sans-serif',
+        },
+      });
       
       // Reset form
       setSelectedRun(null);
@@ -114,7 +111,7 @@ export default function LogRun() {
       setDate(format(new Date(), 'yyyy-MM-dd'));
       setTime(format(new Date(), 'HH:mm'));
       
-      setTimeout(() => navigate('/home'), 1500);
+      setTimeout(() => navigate('/history'), 1500);
     }
   };
 
