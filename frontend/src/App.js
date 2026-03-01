@@ -5,7 +5,7 @@ import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
 import Onboarding from '@/pages/Onboarding';
 import Home from '@/pages/Home';
-import RunDirectory from '@/pages/RunDirectory';
+import Resorts from '@/pages/Resorts';
 import RunDetail from '@/pages/RunDetail';
 import LogRun from '@/pages/LogRun';
 import History from '@/pages/History';
