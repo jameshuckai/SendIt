@@ -100,6 +100,20 @@ export default function Resorts() {
     if (data) setBucketListIds(data.map(item => item.run_id));
   };
 
+  const loadCompletedRuns = async () => {
+    if (!profile) return;
+    const { data } = await supabase
+      .from('user_logs')
+      .select('run_id')
+      .eq('user_id', profile.id);
+    
+    if (data) {
+      // Get unique run IDs
+      const uniqueRunIds = [...new Set(data.map(item => item.run_id))];
+      setCompletedRunIds(uniqueRunIds);
+    }
+  };
+
   const filterRuns = () => {
     let filtered = runs;
 
