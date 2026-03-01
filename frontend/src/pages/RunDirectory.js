@@ -106,6 +106,8 @@ export default function RunDirectory() {
 
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: '#12181B' }} data-testid="run-directory-page">
+      <Header />
+      
       {/* Header */}
       <div className="p-6 pb-4">
         <h1 className="text-2xl font-bold text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
