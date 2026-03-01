@@ -65,6 +65,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: '#12181B' }} data-testid="home-page">
+      <Header />
+      
       {/* Header */}
       <div className="p-6 pb-0">
         <h1 className="text-2xl font-bold text-white mb-1" style={{ fontFamily: 'Manrope, sans-serif' }}>
