@@ -189,10 +189,10 @@ export default function Settings() {
             </div>
           </GlassCard>
 
-          {/* Difficulty Region */}
+          {/* Region */}
           <GlassCard className="p-6">
             <h2 className="text-lg font-bold text-white mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Difficulty Region
+              Region
             </h2>
             <p className="text-xs mb-4" style={{ color: 'rgba(255,255,255,0.6)' }}>
               Difficulty colors match the convention used at resorts in your region.
