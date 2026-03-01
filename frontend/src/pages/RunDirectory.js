@@ -64,7 +64,20 @@ export default function RunDirectory() {
     }
 
     if (mountainFilter) {
-      filtered = filtered.filter(run => run.zone?.includes(mountainFilter));
+      // Check both zone field and ski_area_id for mountain
+      // Since all runs are from Whistler Blackcomb, filter by zone names
+      const whistlerZones = ['Peak', 'Harmony'];
+      const blackcombZones = ['Glacier', '7th Heaven', 'Showcase', 'Crystal', 'Garbanzo'];
+      
+      if (mountainFilter === 'Whistler') {
+        filtered = filtered.filter(run => 
+          run.zone && whistlerZones.some(z => run.zone.includes(z))
+        );
+      } else if (mountainFilter === 'Blackcomb') {
+        filtered = filtered.filter(run => 
+          run.zone && blackcombZones.some(z => run.zone.includes(z))
+        );
+      }
     }
 
     setFilteredRuns(filtered);
