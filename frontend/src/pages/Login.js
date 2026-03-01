@@ -83,20 +83,31 @@ export default function Login() {
               <label className="block text-sm font-medium mb-2 text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
                 Password
               </label>
-              <input
-                data-testid="login-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2"
-                style={{
-                  backgroundColor: '#1A2126',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: 'white'
-                }}
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  data-testid="login-password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 pr-12"
+                  style={{
+                    backgroundColor: '#1A2126',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: 'white'
+                  }}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
+                  style={{ color: 'rgba(255,255,255,0.5)' }}
+                  data-testid="toggle-password"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
 
             <button
