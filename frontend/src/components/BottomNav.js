@@ -51,7 +51,7 @@ export function BottomNav() {
       data-testid="bottom-nav"
     >
       <NavItem to="/home" icon={Home} label="Home" />
-      <NavItem to="/runs" icon={Mountain} label="Runs" />
+      <NavItem to="/resorts" icon={Mountain} label="Resorts" />
       <NavItem to="/log" icon={Plus} label="Log" isLog />
       <NavItem to="/history" icon={History} label="History" />
       <NavItem to="/settings" icon={Settings} label="Settings" />
