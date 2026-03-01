@@ -15,14 +15,22 @@ export default function Signup() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await signUp(email, password);
-    
-    if (error) {
-      toast.error(error.message);
+    try {
+      const { data, error } = await signUp(email, password);
+      
+      if (error) {
+        // Handle error safely without reading response body twice
+        const errorMessage = typeof error === 'string' ? error : error.message || 'Signup failed';
+        toast.error(errorMessage);
+        setLoading(false);
+      } else {
+        toast.success('Account created! Please check your email to confirm.');
+        navigate('/login');
+      }
+    } catch (err) {
+      console.error('Signup error:', err);
+      toast.error('An unexpected error occurred. Please try again.');
       setLoading(false);
-    } else {
-      toast.success('Account created! Please check your email to confirm.');
-      navigate('/login');
     }
   };
 
