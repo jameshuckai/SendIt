@@ -21,6 +21,7 @@ export default function Resorts() {
   const [runs, setRuns] = useState([]);
   const [filteredRuns, setFilteredRuns] = useState([]);
   const [bucketListIds, setBucketListIds] = useState([]);
+  const [completedRunIds, setCompletedRunIds] = useState([]);
   
   // Lifts state
   const [lifts, setLifts] = useState([]);
