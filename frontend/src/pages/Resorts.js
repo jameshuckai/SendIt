@@ -262,7 +262,8 @@ export default function Resorts() {
           />
         </div>
 
-        {/* Filters */}
+        {/* Filters (only for runs view) */}
+        {viewMode === 'runs' && (
         <div className="space-y-3">
           {/* Difficulty Filter */}
           <div className="flex gap-2 overflow-x-auto pb-2">
