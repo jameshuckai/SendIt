@@ -135,6 +135,18 @@ export default function Resorts() {
     setFilteredRuns(filtered);
   };
 
+  const filterLifts = () => {
+    let filtered = lifts;
+
+    if (searchQuery) {
+      filtered = filtered.filter(lift => 
+        lift.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setFilteredLifts(filtered);
+  };
+
   const toggleBucketList = async (runId) => {
     if (!profile) return;
 
