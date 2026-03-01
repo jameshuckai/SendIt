@@ -120,7 +120,7 @@ export default function RunDirectory() {
         <div className="space-y-3">
           {/* Difficulty Filter */}
           <div className="flex gap-2 overflow-x-auto pb-2">
-            {['novice', 'easy', 'intermediate', 'advanced', 'expert'].map((diff) => (
+            {['easy', 'intermediate', 'advanced', 'expert', 'park'].map((diff) => (
               <button
                 key={diff}
                 data-testid={`filter-difficulty-${diff}`}
