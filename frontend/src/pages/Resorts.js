@@ -42,6 +42,7 @@ export default function Resorts() {
       loadRuns();
       loadLifts();
       loadBucketList();
+      loadCompletedRuns();
     }
   }, [selectedResort]);
 
