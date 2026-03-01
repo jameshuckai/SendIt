@@ -133,17 +133,25 @@ export default function Settings() {
                 </label>
                 <div className="flex items-center gap-4">
                   <button
-                    onClick={() => setGoalDays(Math.max(0, goalDays - 5))}
+                    onClick={() => setGoalDays(Math.max(0, goalDays - 1))}
                     className="p-2 rounded-full"
                     style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
                   >
                     <Minus size={20} style={{ color: 'white' }} />
                   </button>
-                  <span className="text-2xl font-bold text-white" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                    {goalDays}
-                  </span>
+                  <input
+                    type="number"
+                    value={goalDays}
+                    onChange={(e) => setGoalDays(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-24 text-center text-2xl font-bold bg-transparent border-b-2 focus:outline-none focus:border-blue-500"
+                    style={{ 
+                      fontFamily: 'JetBrains Mono, monospace',
+                      color: 'white',
+                      borderColor: 'rgba(255,255,255,0.2)'
+                    }}
+                  />
                   <button
-                    onClick={() => setGoalDays(goalDays + 5)}
+                    onClick={() => setGoalDays(goalDays + 1)}
                     className="p-2 rounded-full"
                     style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
                   >
