@@ -75,6 +75,8 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: '#12181B' }} data-testid="settings-page">
+      <Header />
+      
       <div className="p-6">
         <h1 className="text-2xl font-bold text-white mb-6" style={{ fontFamily: 'Manrope, sans-serif' }}>
           Settings
