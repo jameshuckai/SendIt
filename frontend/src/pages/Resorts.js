@@ -376,6 +376,58 @@ export default function Resorts() {
               </div>
             </GlassCard>
           ))
+        )
+        ) : (
+          // Lifts List
+          filteredLifts.length === 0 ? (
+            <GlassCard className="p-6 text-center">
+              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                No lifts found.
+              </p>
+            </GlassCard>
+          ) : (
+            filteredLifts.map((lift) => (
+              <GlassCard 
+                key={lift.id} 
+                className="p-4"
+                data-testid={`lift-card-${lift.id}`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-white mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                      {lift.name}
+                    </h3>
+                    <div className="flex items-center gap-3 text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                      {lift.lift_type && (
+                        <span className="px-2 py-1 rounded" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                          {lift.lift_type.replace('_', ' ').toUpperCase()}
+                        </span>
+                      )}
+                      {lift.capacity && (
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                          Capacity: {lift.capacity}/hr
+                        </span>
+                      )}
+                      {lift.occupancy && (
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                          {lift.occupancy} seats
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <div 
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: lift.is_open ? '#00E676' : '#FF1744' }}
+                      />
+                      <span className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                        {lift.is_open ? 'Open' : 'Closed'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </GlassCard>
+            ))
+          )
         )}
       </div>
 
