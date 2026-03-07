@@ -93,10 +93,10 @@ export default function LogRun() {
     } else {
       toast.success('Logged! Nice run 🤙', {
         style: {
-          background: 'rgba(255, 255, 255, 0.05)',
+          background: 'rgba(26, 33, 38, 0.95)',
           backdropFilter: 'blur(12px)',
           border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderLeft: '3px solid #00E676',
+          borderLeft: '3px solid #00B4D8',
           borderRadius: '12px',
           color: 'white',
           fontFamily: 'Manrope, sans-serif',
