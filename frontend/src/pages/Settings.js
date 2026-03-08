@@ -32,17 +32,22 @@ export default function Settings() {
   const handleSave = async () => {
     setSaving(true);
     
-    const { error } = await updateProfile({
+    console.log('Saving settings:', { username, goalDays, goalVertical, region });
+    
+    const { data, error } = await updateProfile({
       username,
       season_goal_days: goalDays,
       season_goal_vertical_ft: goalVertical,
       difficulty_region: region,
     });
 
+    console.log('updateProfile result:', { data, error });
+
     setSaving(false);
 
     if (error) {
-      toast.error('Failed to update settings');
+      console.error('Failed to update settings:', error);
+      toast.error(`Failed to update settings: ${error.message || error}`);
     } else {
       toast.success('Settings saved!');
     }

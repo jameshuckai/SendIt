@@ -292,11 +292,13 @@ export function useRunChecklist(userId, resortId) {
 
   // Log a run
   const logRun = useCallback(async (runId) => {
-    if (!userId || !resortId) return { success: false, error: 'Missing user or resort' };
+    if (!userId || !resortId) {
+      console.error('Missing userId or resortId:', { userId, resortId });
+      return { success: false, error: 'Missing user or resort' };
+    }
 
     const sessionId = generateSessionId(userId);
     const logEntry = {
-      id: crypto.randomUUID(),
       user_id: userId,
       run_id: runId,
       ski_area_id: resortId,
@@ -304,25 +306,33 @@ export function useRunChecklist(userId, resortId) {
       session_id: sessionId
     };
 
-    // Optimistic update
-    setUserLogs(prev => [logEntry, ...prev]);
+    console.log('Attempting to log run:', logEntry);
 
     if (isOnline) {
       try {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('user_logs')
-          .insert([logEntry]);
+          .insert([logEntry])
+          .select()
+          .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error('Supabase error logging run:', error);
+          throw error;
+        }
+        
+        console.log('Run logged successfully:', data);
+        // Update local state with the returned data (includes generated id)
+        setUserLogs(prev => [data, ...prev]);
         return { success: true };
       } catch (error) {
         console.error('Error logging run:', error);
-        // Add to sync queue for later
-        await offlineStorage.addToSyncQueue(logEntry);
-        return { success: true, queued: true };
+        return { success: false, error: error.message };
       }
     } else {
-      // Offline: add to sync queue
+      // Offline: add to sync queue with temporary id
+      const tempEntry = { ...logEntry, id: `temp_${Date.now()}` };
+      setUserLogs(prev => [tempEntry, ...prev]);
       await offlineStorage.addToSyncQueue(logEntry);
       return { success: true, queued: true };
     }

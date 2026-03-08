@@ -72,7 +72,10 @@ export default function LogRun() {
   // Handle run log
   const handleLogRun = useCallback(async (runId) => {
     const run = runs.find(r => r.id === runId);
+    console.log('handleLogRun called for:', run?.name, runId);
+    
     const result = await logRun(runId);
+    console.log('logRun result:', result);
     
     if (result.success) {
       toast.success(`Logged: ${run?.name || 'Run'} ✓`, {
@@ -99,6 +102,16 @@ export default function LogRun() {
           },
         });
       }
+    } else {
+      toast.error(`Failed to log run: ${result.error || 'Unknown error'}`, {
+        style: {
+          background: 'rgba(26, 33, 38, 0.95)',
+          border: '1px solid rgba(255, 23, 68, 0.3)',
+          borderRadius: '12px',
+          color: '#FF1744',
+          fontFamily: 'Manrope, sans-serif',
+        },
+      });
     }
   }, [runs, logRun]);
 
