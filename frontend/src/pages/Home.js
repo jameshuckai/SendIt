@@ -39,6 +39,88 @@ export default function Home() {
 
   const greeting = getGreeting();
 
+  const loadStats = async () => {
+    if (!profile) return;
+    setIsLoading(true);
+    try {
+      const { data: logs } = await supabase
+        .from('user_logs')
+        .select('run_id, runs(vertical_ft, ski_area_id)')
+        .eq('user_id', profile.id);
+
+      // Get total runs at user's home resort or first resort
+      const { data: allRuns } = await supabase
+        .from('runs')
+        .select('id, ski_area_id');
+
+      if (logs && allRuns) {
+        const uniqueRunIds = new Set(logs.map(l => l.run_id));
+        const totalVertical = logs.reduce((sum, log) => sum + (log.runs?.vertical_ft || 0), 0);
+        const completedRuns = uniqueRunIds.size;
+        const totalRuns = allRuns.length;
+        const completionPercent = totalRuns > 0 ? Math.round((completedRuns / totalRuns) * 100) : 0;
+        
+        setStats({
+          daysLogged: logs.length,
+          verticalLogged: totalVertical,
+          completionPercent,
+          totalRuns,
+          completedRuns
+        });
+      }
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+    setIsLoading(false);
+  };
+
+  const loadHomeResort = async () => {
+    try {
+      // Get the first resort as home resort for now
+      const { data } = await supabase
+        .from('ski_areas')
+        .select('*')
+        .limit(1)
+        .single();
+      
+      if (data) setHomeResort(data);
+    } catch (error) {
+      console.log('Error loading home resort:', error);
+    }
+  };
+
+  const loadBucketList = async () => {
+    if (!profile) return;
+    try {
+      const { data } = await supabase
+        .from('bucket_list')
+        .select('*, runs(*)')
+        .eq('user_id', profile.id)
+        .eq('is_completed', false)
+        .limit(5);
+
+      if (data) setBucketList(data);
+    } catch (error) {
+      console.log('Error loading bucket list:', error);
+    }
+  };
+
+  const loadRecentActivity = async () => {
+    if (!profile) return;
+    try {
+      const { data } = await supabase
+        .from('user_logs')
+        .select('*, runs(name, difficulty)')
+        .eq('user_id', profile.id)
+        .order('logged_at', { ascending: false })
+        .limit(5);
+
+      if (data) setRecentActivity(data);
+    } catch (error) {
+      console.log('Error loading recent activity:', error);
+    }
+  };
+
   useEffect(() => {
     if (profile) {
       loadStats();
@@ -46,70 +128,8 @@ export default function Home() {
       loadRecentActivity();
       loadHomeResort();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
-
-  const loadStats = async () => {
-    setIsLoading(true);
-    const { data: logs } = await supabase
-      .from('user_logs')
-      .select('run_id, runs(vertical_ft, ski_area_id)')
-      .eq('user_id', profile.id);
-
-    // Get total runs at user's home resort or first resort
-    const { data: allRuns } = await supabase
-      .from('runs')
-      .select('id, ski_area_id');
-
-    if (logs && allRuns) {
-      const uniqueRunIds = new Set(logs.map(l => l.run_id));
-      const totalVertical = logs.reduce((sum, log) => sum + (log.runs?.vertical_ft || 0), 0);
-      const completedRuns = uniqueRunIds.size;
-      const totalRuns = allRuns.length;
-      const completionPercent = totalRuns > 0 ? Math.round((completedRuns / totalRuns) * 100) : 0;
-      
-      setStats({
-        daysLogged: logs.length,
-        verticalLogged: totalVertical,
-        completionPercent,
-        totalRuns,
-        completedRuns
-      });
-    }
-    setIsLoading(false);
-  };
-
-  const loadHomeResort = async () => {
-    // Get the first resort as home resort for now
-    const { data } = await supabase
-      .from('ski_areas')
-      .select('*')
-      .limit(1)
-      .single();
-    
-    if (data) setHomeResort(data);
-  };
-
-  const loadBucketList = async () => {
-    const { data } = await supabase
-      .from('bucket_list')
-      .select('*, runs(*)')
-      .eq('user_id', profile.id)
-      .eq('is_completed', false)
-      .limit(5);
-
-    if (data) setBucketList(data);
-  };
-
-  const loadRecentActivity = async () => {
-    const { data } = await supabase
-      .from('user_logs')
-      .select('*, runs(name, difficulty)')
-      .eq('user_id', profile.id)
-      .order('logged_at', { ascending: false })
-      .limit(5);
-
-    if (data) setRecentActivity(data);
-  };
 
   // Empty State Component
   const EmptyStateHero = () => (

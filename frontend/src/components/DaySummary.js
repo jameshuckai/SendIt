@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { GlassCard } from './GlassCard';
 import { DifficultyBadge } from './DifficultyBadge';
 import { 
@@ -30,9 +30,17 @@ export function DaySummary({
   const [isUploading, setIsUploading] = useState(false);
   const summaryRef = useRef(null);
 
+  // Update title/notes when summary changes
+  useEffect(() => {
+    setTitle(summary?.title || '');
+    setNotes(summary?.notes || '');
+  }, [summary]);
+
   if (!isOpen) return null;
 
-  const dateStr = format(date, 'EEEE, MMMM d, yyyy');
+  // Ensure date is valid
+  const safeDate = date instanceof Date && !isNaN(date) ? date : new Date();
+  const dateStr = format(safeDate, 'EEEE, MMMM d, yyyy');
   const timeSpanStr = stats?.timeSpan 
     ? `${format(new Date(stats.timeSpan.start), 'h:mm a')} - ${format(new Date(stats.timeSpan.end), 'h:mm a')}`
     : '';
@@ -65,7 +73,7 @@ export function DaySummary({
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `sendit-${format(date, 'yyyy-MM-dd')}.png`;
+          a.download = `sendit-${format(safeDate, 'yyyy-MM-dd')}.png`;
           a.click();
           URL.revokeObjectURL(url);
           toast.success('Summary image downloaded!');

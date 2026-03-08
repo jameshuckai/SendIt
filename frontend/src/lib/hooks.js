@@ -470,10 +470,15 @@ export function useDaySummary(userId, date = new Date()) {
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const dateStr = date.toISOString().split('T')[0];
+  // Ensure date is valid
+  const safeDate = date instanceof Date && !isNaN(date) ? date : new Date();
+  const dateStr = safeDate.toISOString().split('T')[0];
 
   const loadDaySummary = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) {
+      setIsLoading(false);
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -499,46 +504,56 @@ export function useDaySummary(userId, date = new Date()) {
           end: logsData[logsData.length - 1].logged_at
         } : null;
 
-        // Find first-time runs
-        const runIds = logsData.map(l => l.run_id);
-        const { data: priorLogs } = await supabase
-          .from('user_logs')
-          .select('run_id')
-          .eq('user_id', userId)
-          .in('run_id', runIds)
-          .lt('logged_at', `${dateStr}T00:00:00`);
+        // Find first-time runs (only if there are logs)
+        let firstTimeRunsCount = 0;
+        if (logsData.length > 0) {
+          const runIds = logsData.map(l => l.run_id).filter(Boolean);
+          if (runIds.length > 0) {
+            const { data: priorLogs } = await supabase
+              .from('user_logs')
+              .select('run_id')
+              .eq('user_id', userId)
+              .in('run_id', runIds)
+              .lt('logged_at', `${dateStr}T00:00:00`);
 
-        const priorRunIds = new Set(priorLogs?.map(l => l.run_id) || []);
-        const firstTimeRuns = logsData.filter(l => !priorRunIds.has(l.run_id));
+            const priorRunIds = new Set(priorLogs?.map(l => l.run_id) || []);
+            firstTimeRunsCount = logsData.filter(l => !priorRunIds.has(l.run_id)).length;
+          }
+        }
 
         setStats({
           totalRuns,
           totalVertical,
           timeSpan,
-          firstTimeRuns: firstTimeRuns.length,
+          firstTimeRuns: firstTimeRunsCount,
           uniqueRuns: new Set(logsData.map(l => l.run_id)).size
         });
       }
 
-      // Get day summary if exists
-      const { data: summaryData } = await supabase
-        .from('day_summaries')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('session_date', dateStr)
-        .single();
-
-      if (summaryData) {
-        setSummary(summaryData);
-
-        // Get photos
-        const { data: photosData } = await supabase
-          .from('day_photos')
+      // Get day summary if exists (table may not exist yet)
+      try {
+        const { data: summaryData, error: summaryError } = await supabase
+          .from('day_summaries')
           .select('*')
-          .eq('day_summary_id', summaryData.id)
-          .order('created_at');
+          .eq('user_id', userId)
+          .eq('session_date', dateStr)
+          .single();
 
-        if (photosData) setPhotos(photosData);
+        if (!summaryError && summaryData) {
+          setSummary(summaryData);
+
+          // Get photos
+          const { data: photosData } = await supabase
+            .from('day_photos')
+            .select('*')
+            .eq('day_summary_id', summaryData.id)
+            .order('created_at');
+
+          if (photosData) setPhotos(photosData);
+        }
+      } catch (summaryErr) {
+        // Table may not exist, that's ok
+        console.log('Day summaries not available');
       }
     } catch (error) {
       console.error('Error loading day summary:', error);

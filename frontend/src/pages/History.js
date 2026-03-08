@@ -54,17 +54,27 @@ export default function History() {
   const loadDaySummaries = useCallback(async () => {
     if (!profile) return;
     
-    const { data } = await supabase
-      .from('day_summaries')
-      .select('*')
-      .eq('user_id', profile.id);
-    
-    if (data) {
-      const summaryMap = {};
-      data.forEach(summary => {
-        summaryMap[summary.session_date] = summary;
-      });
-      setDaySummaries(summaryMap);
+    try {
+      const { data, error } = await supabase
+        .from('day_summaries')
+        .select('*')
+        .eq('user_id', profile.id);
+      
+      // If table doesn't exist or other error, just continue with empty summaries
+      if (error) {
+        console.log('Day summaries not available:', error.message);
+        return;
+      }
+      
+      if (data) {
+        const summaryMap = {};
+        data.forEach(summary => {
+          summaryMap[summary.session_date] = summary;
+        });
+        setDaySummaries(summaryMap);
+      }
+    } catch (err) {
+      console.log('Error loading day summaries:', err);
     }
   }, [profile]);
 
