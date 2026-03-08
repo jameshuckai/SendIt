@@ -8,6 +8,7 @@ import { ResortSelector } from '@/components/ResortSelector';
 import { RunChecklist } from '@/components/RunChecklist';
 import { RunDetailSheet } from '@/components/RunDetailSheet';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { ResortMap } from '@/components/ResortMap';
 import { supabase } from '@/lib/supabase';
 import { useResortDetection, useRunChecklist, useSyncQueue, useOnlineStatus } from '@/lib/hooks';
 import { offlineStorage } from '@/lib/offline';
@@ -49,6 +50,29 @@ export default function LogRun() {
 
   // Sync queue
   const { pendingCount, isSyncing, syncNow } = useSyncQueue(profile?.id);
+
+  // Lifts state
+  const [lifts, setLifts] = useState([]);
+
+  // Load lifts when resort changes
+  useEffect(() => {
+    const loadLifts = async () => {
+      if (!selectedResort?.id) return;
+      
+      try {
+        const { data } = await supabase
+          .from('lifts')
+          .select('*')
+          .eq('ski_area_id', selectedResort.id);
+        
+        if (data) setLifts(data);
+      } catch (error) {
+        console.log('Error loading lifts:', error);
+      }
+    };
+    
+    loadLifts();
+  }, [selectedResort?.id]);
 
   // UI state
   const [showResortSelector, setShowResortSelector] = useState(false);
@@ -300,17 +324,17 @@ export default function LogRun() {
           />
         )}
 
-        {/* Map View Placeholder */}
+        {/* Map View */}
         {selectedResort && viewMode === 'map' && (
-          <GlassCard className="p-8 text-center">
-            <MapIcon size={48} className="mx-auto mb-4" style={{ color: 'rgba(255,255,255,0.2)' }} />
-            <h3 className="text-lg font-semibold text-white mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Map View Coming Soon
-            </h3>
-            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>
-              Trail map with run geometries will be available when GeoJSON data is added
-            </p>
-          </GlassCard>
+          <ResortMap
+            runs={runs}
+            lifts={lifts}
+            resort={selectedResort}
+            getRunStatus={getRunStatus}
+            isInBucketList={isInBucketList}
+            onLogRun={handleLogRun}
+            region={profile?.difficulty_region}
+          />
         )}
 
         {/* No Resort Selected */}
