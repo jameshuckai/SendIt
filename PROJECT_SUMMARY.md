@@ -210,7 +210,7 @@ All tables have Row Level Security policies configured.
 - Row Level Security policies
 
 **Deployment**:
-- Frontend: Emergent Preview (https://blackcomb-beta.preview.emergentagent.com)
+- Frontend: Emergent Preview (https://vertical-log-app.preview.emergentagent.com)
 - Database: Supabase Cloud
 
 ---
@@ -229,9 +229,9 @@ All tables have Row Level Security policies configured.
 
 ## 📱 Testing URLs
 
-- **Login**: https://blackcomb-beta.preview.emergentagent.com/login
-- **Signup**: https://blackcomb-beta.preview.emergentagent.com/signup
-- **Home**: https://blackcomb-beta.preview.emergentagent.com/home (after auth)
+- **Login**: https://vertical-log-app.preview.emergentagent.com/login
+- **Signup**: https://vertical-log-app.preview.emergentagent.com/signup
+- **Home**: https://vertical-log-app.preview.emergentagent.com/home (after auth)
 
 Test credentials (after you create them):
 - Email: test@sendit.app
