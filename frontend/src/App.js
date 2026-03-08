@@ -12,45 +12,73 @@ import History from '@/pages/History';
 import Settings from '@/pages/Settings';
 import '@/App.css';
 
+// Loading spinner component
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center" style={{ backgroundColor: '#12181B' }}>
+      <img 
+        src="https://customer-assets.emergentagent.com/job_blackcomb-beta/artifacts/za2ypiek_SendItLogo.png"
+        alt="Sendit Logo"
+        className="h-16 w-16 mb-4 animate-pulse"
+      />
+      <div className="text-white text-sm" style={{ fontFamily: 'Manrope, sans-serif', color: 'rgba(255,255,255,0.6)' }}>
+        Loading...
+      </div>
+    </div>
+  );
+}
+
 function ProtectedRoute({ children }) {
   const { user, profile, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#12181B' }}>
-        <div className="text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>Loading...</div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (profile && !profile.onboarding_complete) {
+  // Check if onboarding is needed
+  if (profile && profile.onboarding_complete === false) {
     return <Navigate to="/onboarding" replace />;
   }
 
   return children;
 }
 
-function AppRoutes() {
-  const { user, profile, loading } = useAuth();
+function PublicRoute({ children }) {
+  const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#12181B' }}>
-        <div className="text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>Loading...</div>
-      </div>
-    );
+    return <LoadingScreen />;
+  }
+
+  // If user is logged in, redirect to home
+  if (user) {
+    return <Navigate to="/home" replace />;
+  }
+
+  return children;
+}
+
+function AppRoutes() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
   }
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/home" replace /> : <Login />} />
-      <Route path="/signup" element={user ? <Navigate to="/home" replace /> : <Signup />} />
+      {/* Public routes - redirect to home if logged in */}
+      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+      <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+      
+      {/* Onboarding - requires auth but not onboarding_complete */}
       <Route path="/onboarding" element={user ? <Onboarding /> : <Navigate to="/login" replace />} />
       
+      {/* Protected routes */}
       <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
       <Route path="/resorts" element={<ProtectedRoute><Resorts /></ProtectedRoute>} />
       <Route path="/runs/:id" element={<ProtectedRoute><RunDetail /></ProtectedRoute>} />
@@ -58,8 +86,9 @@ function AppRoutes() {
       <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       
-      <Route path="/" element={<Navigate to={user ? "/home" : "/login"} replace />} />
-      <Route path="*" element={<Navigate to={user ? "/home" : "/login"} replace />} />
+      {/* Default route - always go to login first, let auth redirect if needed */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }
