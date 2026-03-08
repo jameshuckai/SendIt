@@ -107,17 +107,25 @@ export default function History() {
   }, [profile, loadLogs, loadDaySummaries, calculateStats]);
 
   const deleteLog = async (logId) => {
-    const { error } = await supabase
-      .from('user_logs')
-      .delete()
-      .eq('id', logId);
+    try {
+      // Use proper { data, error } destructuring
+      // NEVER call .json() or .text() on Supabase responses
+      const { error } = await supabase
+        .from('user_logs')
+        .delete()
+        .eq('id', logId);
 
-    if (error) {
+      if (error) {
+        console.error('Error deleting log:', error);
+        toast.error('Failed to delete log');
+      } else {
+        toast.success('Log deleted');
+        loadLogs();
+        calculateStats();
+      }
+    } catch (err) {
+      console.error('Error deleting log:', err);
       toast.error('Failed to delete log');
-    } else {
-      toast.success('Log deleted');
-      loadLogs();
-      calculateStats();
     }
   };
 

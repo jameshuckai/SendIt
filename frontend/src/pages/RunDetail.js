@@ -57,22 +57,40 @@ export default function RunDetail() {
   const toggleBucketList = async () => {
     if (!profile) return;
 
-    if (isInBucketList) {
-      await supabase
-        .from('bucket_list')
-        .delete()
-        .eq('user_id', profile.id)
-        .eq('run_id', id);
-      
-      setIsInBucketList(false);
-      toast.success('Removed from bucket list');
-    } else {
-      await supabase
-        .from('bucket_list')
-        .insert([{ user_id: profile.id, run_id: id }]);
-      
-      setIsInBucketList(true);
-      toast.success('Added to bucket list!');
+    try {
+      if (isInBucketList) {
+        // Use proper { data, error } destructuring
+        // NEVER call .json() or .text() on Supabase responses
+        const { error } = await supabase
+          .from('bucket_list')
+          .delete()
+          .eq('user_id', profile.id)
+          .eq('run_id', id);
+        
+        if (error) {
+          console.error('Error removing from bucket list:', error);
+          toast.error('Failed to remove from bucket list');
+          return;
+        }
+        setIsInBucketList(false);
+        toast.success('Removed from bucket list');
+      } else {
+        // Use proper { data, error } destructuring
+        const { error } = await supabase
+          .from('bucket_list')
+          .insert({ user_id: profile.id, run_id: id });
+        
+        if (error) {
+          console.error('Error adding to bucket list:', error);
+          toast.error('Failed to add to bucket list');
+          return;
+        }
+        setIsInBucketList(true);
+        toast.success('Added to bucket list!');
+      }
+    } catch (err) {
+      console.error('Error toggling bucket list:', err);
+      toast.error('Failed to update bucket list');
     }
   };
 

@@ -50,11 +50,24 @@ export default function Onboarding() {
       onboarding_complete: true,
     });
 
-    // Save bucket list items
-    if (bucketList.length > 0) {
-      await supabase.from('bucket_list').insert(
-        bucketList.map(runId => ({ user_id: profile.id, run_id: runId }))
-      );
+    // Save bucket list items with proper error handling
+    // Use proper { data, error } destructuring
+    // NEVER call .json() or .text() on Supabase responses
+    if (bucketList.length > 0 && profile?.id) {
+      try {
+        const { error } = await supabase
+          .from('bucket_list')
+          .insert(
+            bucketList.map(runId => ({ user_id: profile.id, run_id: runId }))
+          );
+        
+        if (error) {
+          console.error('Error saving bucket list:', error);
+          // Non-blocking error - continue with navigation
+        }
+      } catch (err) {
+        console.error('Error saving bucket list:', err);
+      }
     }
 
     toast.success('Profile complete! 🏔️');

@@ -310,24 +310,40 @@ export function useRunChecklist(userId, resortId) {
 
     if (isOnline) {
       try {
+        // Use proper Supabase { data, error } destructuring
+        // NEVER call .json() or .text() on Supabase responses
         const { data, error } = await supabase
           .from('user_logs')
-          .insert([logEntry])
+          .insert({
+            user_id: logEntry.user_id,
+            run_id: logEntry.run_id,
+            ski_area_id: logEntry.ski_area_id,
+            logged_at: logEntry.logged_at,
+            session_id: logEntry.session_id
+          })
           .select()
           .single();
         
         if (error) {
           console.error('Supabase error logging run:', error);
-          throw error;
+          // Extract error message safely
+          const errorMessage = typeof error === 'object' && error !== null
+            ? (error.message || error.details || JSON.stringify(error))
+            : String(error);
+          return { success: false, error: errorMessage };
         }
         
         console.log('Run logged successfully:', data);
         // Update local state with the returned data (includes generated id)
         setUserLogs(prev => [data, ...prev]);
         return { success: true };
-      } catch (error) {
-        console.error('Error logging run:', error);
-        return { success: false, error: error.message };
+      } catch (err) {
+        console.error('Error logging run:', err);
+        // Safely extract error message without calling .text() or .json()
+        const errorMessage = err instanceof Error 
+          ? err.message 
+          : (typeof err === 'string' ? err : 'Unknown error occurred');
+        return { success: false, error: errorMessage };
       }
     } else {
       // Offline: add to sync queue with temporary id
@@ -427,10 +443,14 @@ export function useSyncQueue(userId) {
     setIsSyncing(true);
     try {
       const queue = await offlineStorage.getSyncQueue();
-      if (queue.length === 0) return;
+      if (queue.length === 0) {
+        setIsSyncing(false);
+        return;
+      }
 
-      // Batch insert
-      const { error } = await supabase
+      // Batch insert - use proper { data, error } destructuring
+      // NEVER call .json() or .text() on Supabase responses
+      const { data, error } = await supabase
         .from('user_logs')
         .insert(queue.map(item => ({
           user_id: item.user_id,
@@ -438,15 +458,21 @@ export function useSyncQueue(userId) {
           ski_area_id: item.ski_area_id,
           logged_at: item.logged_at,
           session_id: item.session_id
-        })));
+        })))
+        .select();
 
-      if (!error) {
-        await offlineStorage.clearSyncQueue();
-        setPendingCount(0);
-        return { synced: queue.length };
+      if (error) {
+        console.error('Sync error:', error);
+        return { synced: 0, error: error.message || 'Sync failed' };
       }
-    } catch (error) {
-      console.error('Sync error:', error);
+      
+      await offlineStorage.clearSyncQueue();
+      setPendingCount(0);
+      return { synced: queue.length };
+    } catch (err) {
+      console.error('Sync error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown sync error';
+      return { synced: 0, error: errorMessage };
     } finally {
       setIsSyncing(false);
     }
@@ -573,9 +599,11 @@ export function useDaySummary(userId, date = new Date()) {
   }, [userId, dateStr]);
 
   const saveSummary = useCallback(async (title, notes) => {
-    if (!userId) return { success: false };
+    if (!userId) return { success: false, error: 'Not logged in' };
 
     try {
+      // Use proper { data, error } destructuring
+      // NEVER call .json() or .text() on Supabase responses
       const { data, error } = await supabase
         .from('day_summaries')
         .upsert({
@@ -588,31 +616,45 @@ export function useDaySummary(userId, date = new Date()) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error saving summary:', error);
+        const errorMessage = typeof error === 'object' && error !== null
+          ? (error.message || error.details || JSON.stringify(error))
+          : String(error);
+        return { success: false, error: errorMessage };
+      }
+      
       setSummary(data);
       return { success: true, data };
-    } catch (error) {
-      console.error('Error saving summary:', error);
-      return { success: false, error };
+    } catch (err) {
+      console.error('Error saving summary:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      return { success: false, error: errorMessage };
     }
   }, [userId, dateStr]);
 
   const deleteLog = useCallback(async (logId) => {
     try {
+      // Use proper { data, error } destructuring
+      // NEVER call .json() or .text() on Supabase responses
       const { error } = await supabase
         .from('user_logs')
         .delete()
         .eq('id', logId);
 
-      if (!error) {
-        setLogs(prev => prev.filter(l => l.id !== logId));
-        loadDaySummary(); // Refresh stats
-        return { success: true };
+      if (error) {
+        console.error('Error deleting log:', error);
+        return { success: false, error: error.message || 'Delete failed' };
       }
-    } catch (error) {
-      console.error('Error deleting log:', error);
+      
+      setLogs(prev => prev.filter(l => l.id !== logId));
+      loadDaySummary(); // Refresh stats
+      return { success: true };
+    } catch (err) {
+      console.error('Error deleting log:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      return { success: false, error: errorMessage };
     }
-    return { success: false };
   }, [loadDaySummary]);
 
   useEffect(() => {

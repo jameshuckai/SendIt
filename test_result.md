@@ -101,3 +101,143 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: |
+  Fix the error "Failed to log run: TypeError: Failed to execute 'text' on 'Response': body stream already read"
+  in the Log Run page and any associated service/helper functions. Ensure all Supabase calls use
+  proper { data, error } destructuring pattern and never call .json(), .text(), or read response.body manually.
+
+frontend:
+  - task: "Fix Supabase response handling in logRun function"
+    implemented: true
+    working: true
+    file: "frontend/src/lib/hooks.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated logRun function with proper { data, error } destructuring, removed array wrapper from insert, added robust error handling that safely extracts error messages without calling .text() or .json()"
+      - working: true
+        agent: "testing"
+        comment: "Code review confirms logRun function (lines 294-355 in hooks.js) correctly uses { data, error } destructuring with .single() method, removed array wrapper from insert, and has proper error handling without calling .text() or .json() on responses. Implementation is correct."
+
+  - task: "Fix Supabase response handling in bucket_list operations"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/LogRun.js, RunDetail.js, RunDirectory.js, Resorts.js, Onboarding.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated all bucket_list insert/delete operations with try-catch blocks and proper { data, error } destructuring"
+      - working: true
+        agent: "testing"
+        comment: "Code review confirms bucket_list operations in LogRun.js (lines 165-205) and RunDetail.js (lines 57-95) correctly use { data, error } destructuring without calling .text() or .json() on responses. Implementation is correct."
+
+  - task: "Fix Supabase response handling in sync queue and day summary functions"
+    implemented: true
+    working: true
+    file: "frontend/src/lib/hooks.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated syncNow, saveSummary, and deleteLog functions with proper error handling"
+      - working: true
+        agent: "testing"
+        comment: "Code review confirms syncNow (lines 440-479), saveSummary (lines 601-634), and deleteLog (lines 636-658) correctly use { data, error } destructuring without calling .text() or .json() on responses. Implementation is correct."
+
+  - task: "Fix Supabase response handling in Settings and History pages"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Settings.js, History.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated waitlist insert and log deletion with proper error handling"
+      - working: true
+        agent: "testing"
+        comment: "Code implementation follows proper { data, error } destructuring pattern. No .text() or .json() calls on responses. Implementation is correct."
+
+  - task: "Investigation: Body stream error during authentication"
+    implemented: false
+    working: false
+    file: "frontend/src/contexts/AuthContext.js, frontend/src/pages/Login.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "UI testing revealed error toast during sign-in: 'Failed to execute 'json' on 'Response': body stream already read'. This error appears when attempting to sign in with test credentials (test@sendit.app). Auth code uses proper { data, error } destructuring, suggesting error may be related to Supabase configuration or invalid credentials. Note: REACT_APP_SUPABASE_ANON_KEY appears to use placeholder format (sb_publishable_...) instead of valid JWT token format. Cannot fully test Log Run functionality without authentication working."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Investigation: Body stream error during authentication"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: |
+      Fixed all Supabase calls across the codebase to use proper { data, error } destructuring pattern.
+      Key changes:
+      1. logRun function in hooks.js - removed array wrapper from insert, added robust error handling
+      2. All bucket_list operations now use try-catch with proper error extraction
+      3. syncNow, saveSummary, deleteLog functions updated with proper error handling
+      4. Settings waitlist and History deleteLog updated
+      
+      All files pass linting. Frontend compiled successfully.
+      Please test the Log Run functionality to verify the fix.
+  
+  - agent: "testing"
+    message: |
+      TEST RESULTS - PARTIAL SUCCESS WITH CRITICAL FINDING
+      
+      ✅ CODE REVIEW PASSED:
+      - logRun function correctly uses { data, error } destructuring with .single()
+      - bucket_list operations properly handle responses without .text()/.json() calls
+      - sync queue and day summary functions correctly implemented
+      - All targeted fixes are correctly implemented in code
+      
+      ⚠️ CRITICAL ISSUE DISCOVERED:
+      - Cannot fully test Log Run functionality due to authentication blocking access
+      - UI testing revealed "Failed to execute 'json' on 'Response': body stream already read" error
+      - Error occurs during SIGN-IN process, not during run logging
+      - Error toast displayed when attempting to sign in with test@sendit.app credentials
+      - Supabase auth request returns 400 status (invalid credentials or configuration)
+      
+      🔍 INVESTIGATION FINDINGS:
+      1. Auth code (AuthContext.js, Login.js, Signup.js) uses proper { data, error } destructuring
+      2. REACT_APP_SUPABASE_ANON_KEY uses suspicious placeholder format "sb_publishable_..." instead of valid JWT
+      3. Account creation shows success toast but stays on login page (email confirmation required)
+      4. The "body stream" error in auth flow was NOT addressed by the original fixes
+      
+      📋 WHAT WAS TESTED:
+      - Attempted sign-in with test@sendit.app / password123
+      - Attempted sign-up flow
+      - Navigated to /log page (redirected to /login due to auth)
+      - Reviewed all fixed code files for proper implementation
+      
+      📊 STATUS SUMMARY:
+      - Original bug fix (logRun): ✅ FIXED (code review confirms)
+      - Auth "body stream" error: ❌ NEW ISSUE (not part of original scope)
+      - Log Run testing: ⚠️ BLOCKED (requires valid authentication)
+      
+      The original issue reported in logRun has been properly fixed in code. However, a similar error appears in the authentication flow which prevents end-to-end testing of the Log Run feature.

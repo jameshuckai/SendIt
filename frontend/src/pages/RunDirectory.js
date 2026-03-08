@@ -87,20 +87,35 @@ export default function RunDirectory() {
   const toggleBucketList = async (runId) => {
     if (!profile) return;
 
-    if (bucketListIds.includes(runId)) {
-      await supabase
-        .from('bucket_list')
-        .delete()
-        .eq('user_id', profile.id)
-        .eq('run_id', runId);
-      
-      setBucketListIds(bucketListIds.filter(id => id !== runId));
-    } else {
-      await supabase
-        .from('bucket_list')
-        .insert([{ user_id: profile.id, run_id: runId }]);
-      
-      setBucketListIds([...bucketListIds, runId]);
+    try {
+      if (bucketListIds.includes(runId)) {
+        // Use proper { data, error } destructuring
+        // NEVER call .json() or .text() on Supabase responses
+        const { error } = await supabase
+          .from('bucket_list')
+          .delete()
+          .eq('user_id', profile.id)
+          .eq('run_id', runId);
+        
+        if (error) {
+          console.error('Error removing from bucket list:', error);
+          return;
+        }
+        setBucketListIds(bucketListIds.filter(id => id !== runId));
+      } else {
+        // Use proper { data, error } destructuring
+        const { error } = await supabase
+          .from('bucket_list')
+          .insert({ user_id: profile.id, run_id: runId });
+        
+        if (error) {
+          console.error('Error adding to bucket list:', error);
+          return;
+        }
+        setBucketListIds([...bucketListIds, runId]);
+      }
+    } catch (err) {
+      console.error('Error toggling bucket list:', err);
     }
   };
 

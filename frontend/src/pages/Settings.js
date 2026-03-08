@@ -56,20 +56,28 @@ export default function Settings() {
   const handleWaitlistSubmit = async (e) => {
     e.preventDefault();
     
-    const { error } = await supabase
-      .from('waitlist')
-      .insert([{ email: waitlistEmail }]);
+    try {
+      // Use proper { data, error } destructuring
+      // NEVER call .json() or .text() on Supabase responses
+      const { error } = await supabase
+        .from('waitlist')
+        .insert({ email: waitlistEmail });
 
-    if (error) {
-      if (error.code === '23505') {
-        toast.success('You\'re already on the waitlist!');
+      if (error) {
+        if (error.code === '23505') {
+          toast.success('You\'re already on the waitlist!');
+        } else {
+          console.error('Error joining waitlist:', error);
+          toast.error('Failed to join waitlist');
+        }
       } else {
-        toast.error('Failed to join waitlist');
+        toast.success('Added to waitlist! We\'ll notify you soon.');
+        setShowWaitlistModal(false);
+        setWaitlistEmail('');
       }
-    } else {
-      toast.success('Added to waitlist! We\'ll notify you soon.');
-      setShowWaitlistModal(false);
-      setWaitlistEmail('');
+    } catch (err) {
+      console.error('Error joining waitlist:', err);
+      toast.error('Failed to join waitlist');
     }
   };
 
