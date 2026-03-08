@@ -1,44 +1,83 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { GlassCard } from '@/components/GlassCard';
 import { DifficultyBadge } from '@/components/DifficultyBadge';
+import { DaySummary } from '@/components/DaySummary';
 import { supabase } from '@/lib/supabase';
-import { format } from 'date-fns';
-import { Trash2 } from 'lucide-react';
+import { useDaySummary } from '@/lib/hooks';
+import { format, parseISO, isToday as checkIsToday } from 'date-fns';
+import { Trash2, Calendar, TrendingUp, Mountain, ChevronRight, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function History() {
   const { profile } = useAuth();
-  const [logs, setLogs] = useState([]);
+  const [groupedLogs, setGroupedLogs] = useState({});
+  const [daySummaries, setDaySummaries] = useState({});
   const [stats, setStats] = useState({ totalDays: 0, totalVertical: 0, totalRuns: 0 });
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [showDaySummary, setShowDaySummary] = useState(false);
 
-  useEffect(() => {
-    if (profile) {
-      loadLogs();
-      calculateStats();
-    }
-  }, [profile]);
+  // Day summary hook for selected date
+  const daySummaryData = useDaySummary(profile?.id, selectedDate || new Date());
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
+    if (!profile) return;
+    
     const { data } = await supabase
       .from('user_logs')
-      .select('*, runs(name, difficulty, vertical_ft)')
+      .select('*, runs(name, difficulty, vertical_ft, zone), ski_areas(name)')
       .eq('user_id', profile.id)
       .order('logged_at', { ascending: false });
     
-    if (data) setLogs(data);
-  };
+    if (data) {
+      // Group by date
+      const grouped = {};
+      data.forEach(log => {
+        const dateKey = format(new Date(log.logged_at), 'yyyy-MM-dd');
+        if (!grouped[dateKey]) {
+          grouped[dateKey] = {
+            date: dateKey,
+            logs: [],
+            totalVertical: 0,
+            resortName: log.ski_areas?.name
+          };
+        }
+        grouped[dateKey].logs.push(log);
+        grouped[dateKey].totalVertical += log.runs?.vertical_ft || 0;
+      });
+      setGroupedLogs(grouped);
+    }
+  }, [profile]);
 
-  const calculateStats = async () => {
+  const loadDaySummaries = useCallback(async () => {
+    if (!profile) return;
+    
+    const { data } = await supabase
+      .from('day_summaries')
+      .select('*')
+      .eq('user_id', profile.id);
+    
+    if (data) {
+      const summaryMap = {};
+      data.forEach(summary => {
+        summaryMap[summary.session_date] = summary;
+      });
+      setDaySummaries(summaryMap);
+    }
+  }, [profile]);
+
+  const calculateStats = useCallback(async () => {
+    if (!profile) return;
+    
     const { data } = await supabase
       .from('user_logs')
-      .select('run_id, runs(vertical_ft)')
+      .select('logged_at, runs(vertical_ft)')
       .eq('user_id', profile.id);
 
     if (data) {
-      const uniqueDays = new Set(data.map(l => format(new Date(l.logged_at || new Date()), 'yyyy-MM-dd'))).size;
+      const uniqueDays = new Set(data.map(l => format(new Date(l.logged_at), 'yyyy-MM-dd'))).size;
       const totalVertical = data.reduce((sum, log) => sum + (log.runs?.vertical_ft || 0), 0);
       
       setStats({
@@ -47,11 +86,17 @@ export default function History() {
         totalRuns: data.length
       });
     }
-  };
+  }, [profile]);
+
+  useEffect(() => {
+    if (profile) {
+      loadLogs();
+      loadDaySummaries();
+      calculateStats();
+    }
+  }, [profile, loadLogs, loadDaySummaries, calculateStats]);
 
   const deleteLog = async (logId) => {
-    if (!window.confirm('Delete this log?')) return;
-
     const { error } = await supabase
       .from('user_logs')
       .delete()
@@ -66,8 +111,27 @@ export default function History() {
     }
   };
 
-  const isPremiumLocked = logs.length > 20 && !profile?.is_premium;
-  const visibleLogs = isPremiumLocked ? logs.slice(0, 20) : logs;
+  const handleDayClick = (dateStr) => {
+    setSelectedDate(parseISO(dateStr));
+    setShowDaySummary(true);
+  };
+
+  const handleSaveDaySummary = async (title, notes) => {
+    return await daySummaryData.saveSummary(title, notes);
+  };
+
+  const handleDeleteLog = async (logId) => {
+    const result = await daySummaryData.deleteLog(logId);
+    if (result.success) {
+      loadLogs();
+      calculateStats();
+    }
+    return result;
+  };
+
+  const dates = Object.keys(groupedLogs).sort((a, b) => b.localeCompare(a));
+  const isPremiumLocked = dates.length > 20 && !profile?.is_premium;
+  const visibleDates = isPremiumLocked ? dates.slice(0, 20) : dates;
 
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: '#12181B' }} data-testid="history-page">
@@ -84,15 +148,10 @@ export default function History() {
             Season Summary
           </h2>
           <div className="grid grid-cols-3 gap-4">
-            <div>
-              <div className="text-2xl font-bold text-white" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                {stats.totalRuns}
+            <div className="text-center">
+              <div className="flex justify-center mb-2">
+                <Calendar size={18} style={{ color: '#00B4D8' }} />
               </div>
-              <div className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                Total Logs
-              </div>
-            </div>
-            <div>
               <div className="text-2xl font-bold text-white" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
                 {stats.totalDays}
               </div>
@@ -100,63 +159,98 @@ export default function History() {
                 Days Out
               </div>
             </div>
-            <div>
-              <div className="text-2xl font-bold text-white" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+            <div className="text-center">
+              <div className="flex justify-center mb-2">
+                <TrendingUp size={18} style={{ color: '#00B4D8' }} />
+              </div>
+              <div className="text-2xl font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#00B4D8' }}>
                 {stats.totalVertical.toLocaleString()}
               </div>
               <div className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.6)' }}>
                 Vertical ft
               </div>
             </div>
+            <div className="text-center">
+              <div className="flex justify-center mb-2">
+                <Mountain size={18} style={{ color: '#00B4D8' }} />
+              </div>
+              <div className="text-2xl font-bold text-white" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                {stats.totalRuns}
+              </div>
+              <div className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                Total Runs
+              </div>
+            </div>
           </div>
         </GlassCard>
 
-        {/* Logs */}
-        {visibleLogs.length === 0 ? (
+        {/* Day Cards */}
+        {visibleDates.length === 0 ? (
           <GlassCard className="p-8 text-center">
+            <Calendar size={48} className="mx-auto mb-4" style={{ color: 'rgba(255,255,255,0.2)' }} />
             <p className="text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
-              No runs logged yet. Get out there! ⛷️
+              No runs logged yet. Get out there!
             </p>
           </GlassCard>
         ) : (
           <div className="space-y-3">
-            {visibleLogs.map((log) => (
-              <GlassCard key={log.id} className="p-4" data-testid={`log-entry-${log.id}`}>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-base font-semibold text-white mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                      {log.runs?.name || 'Unknown Run'}
-                    </h3>
-                    <div className="flex items-center gap-2 mb-2">
-                      {log.runs?.difficulty && (
-                        <DifficultyBadge difficulty={log.runs.difficulty} region={profile?.difficulty_region} />
+            {visibleDates.map((dateStr) => {
+              const dayData = groupedLogs[dateStr];
+              const summary = daySummaries[dateStr];
+              const isCurrentDay = checkIsToday(parseISO(dateStr));
+              
+              return (
+                <GlassCard 
+                  key={dateStr}
+                  className="p-4 cursor-pointer transition-all hover:bg-white/10"
+                  onClick={() => handleDayClick(dateStr)}
+                  data-testid={`day-card-${dateStr}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-base font-semibold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                          {summary?.title || format(parseISO(dateStr), 'EEEE, MMM d')}
+                        </h3>
+                        {isCurrentDay && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{
+                            backgroundColor: 'rgba(0, 230, 118, 0.2)',
+                            color: '#00E676'
+                          }}>
+                            Today
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                        <span className="flex items-center gap-1">
+                          <Mountain size={14} />
+                          {dayData.logs.length} runs
+                        </span>
+                        <span className="flex items-center gap-1" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                          <TrendingUp size={14} />
+                          {dayData.totalVertical.toLocaleString()} ft
+                        </span>
+                      </div>
+                      
+                      {dayData.resortName && (
+                        <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                          {dayData.resortName}
+                        </p>
                       )}
-                      <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'JetBrains Mono, monospace' }}>
-                        {format(new Date(log.logged_at), 'MMM d, yyyy h:mm a')}
-                      </span>
+                      
+                      {summary?.notes && (
+                        <p className="text-xs mt-2 line-clamp-2" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                          {summary.notes}
+                        </p>
+                      )}
                     </div>
-                    {log.snow_condition && (
-                      <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                        <span style={{ fontFamily: 'Manrope, sans-serif', fontWeight: 600 }}>Conditions:</span> {log.snow_condition}
-                      </p>
-                    )}
-                    {log.notes && (
-                      <p className="text-sm mt-2" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                        {log.notes}
-                      </p>
-                    )}
+                    
+                    <ChevronRight size={20} style={{ color: 'rgba(255,255,255,0.3)' }} />
                   </div>
-                  <button
-                    onClick={() => deleteLog(log.id)}
-                    className="p-2 transition-all"
-                    style={{ color: 'rgba(255,255,255,0.4)' }}
-                    data-testid={`delete-log-${log.id}`}
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </GlassCard>
-            ))}
+                </GlassCard>
+              );
+            })}
           </div>
         )}
 
@@ -189,6 +283,22 @@ export default function History() {
           </GlassCard>
         )}
       </div>
+
+      {/* Day Summary Modal */}
+      <DaySummary
+        date={selectedDate || new Date()}
+        logs={daySummaryData.logs}
+        stats={daySummaryData.stats}
+        summary={daySummaryData.summary}
+        photos={daySummaryData.photos}
+        onSaveSummary={handleSaveDaySummary}
+        onDeleteLog={handleDeleteLog}
+        onAddRun={() => {}}
+        region={profile?.difficulty_region}
+        resortName={selectedDate ? groupedLogs[format(selectedDate, 'yyyy-MM-dd')]?.resortName : null}
+        isOpen={showDaySummary}
+        onClose={() => setShowDaySummary(false)}
+      />
 
       <BottomNav />
     </div>
