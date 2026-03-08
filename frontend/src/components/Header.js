@@ -1,10 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { User, Settings, LogOut, ChevronDown, Mountain } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 
-export function Header() {
+export function Header({ 
+  showResortSelector = false, 
+  selectedResort = null, 
+  onResortClick = null 
+}) {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
@@ -45,19 +49,41 @@ export function Header() {
       }}
       data-testid="app-header"
     >
-      {/* Logo */}
-      <div className="flex items-center gap-2">
+      {/* Left side - Logo and Resort Selector */}
+      <div className="flex items-center gap-3">
         <img 
           src="https://customer-assets.emergentagent.com/job_blackcomb-beta/artifacts/za2ypiek_SendItLogo.png"
           alt="Sendit Logo"
           className="h-10 w-10 object-contain"
         />
-        <span 
-          className="text-xl font-bold text-white"
-          style={{ fontFamily: 'Manrope, sans-serif' }}
-        >
-          Sendit
-        </span>
+        
+        {showResortSelector && onResortClick ? (
+          <button
+            onClick={onResortClick}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all hover:bg-white/10"
+            style={{ 
+              backgroundColor: 'rgba(0, 180, 216, 0.1)',
+              border: '1px solid rgba(0, 180, 216, 0.3)'
+            }}
+            data-testid="header-resort-selector"
+          >
+            <Mountain size={16} style={{ color: '#00B4D8' }} />
+            <span 
+              className="text-sm font-medium max-w-[120px] truncate"
+              style={{ color: '#00B4D8', fontFamily: 'Manrope, sans-serif' }}
+            >
+              {selectedResort?.name || 'Select Resort'}
+            </span>
+            <ChevronDown size={14} style={{ color: '#00B4D8' }} />
+          </button>
+        ) : (
+          <span 
+            className="text-xl font-bold text-white"
+            style={{ fontFamily: 'Manrope, sans-serif' }}
+          >
+            Sendit
+          </span>
+        )}
       </div>
 
       {/* User Profile Menu */}

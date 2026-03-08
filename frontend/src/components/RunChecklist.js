@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { GlassCard } from './GlassCard';
 import { DifficultyBadge } from './DifficultyBadge';
-import { Check, Target, ChevronDown, ChevronUp, TrendingUp, RotateCcw } from 'lucide-react';
+import { Check, Target, ChevronDown, ChevronRight, TrendingUp, RotateCcw } from 'lucide-react';
 
 // Status colors
 const STATUS_COLORS = {
@@ -34,7 +34,14 @@ export function RunChecklist({
   region,
   isLoading
 }) {
+  // Start with all zones collapsed
   const [collapsedZones, setCollapsedZones] = useState(new Set());
+  
+  // Collapse all zones when groupedRuns changes (e.g., resort change)
+  useEffect(() => {
+    const zones = Object.keys(groupedRuns);
+    setCollapsedZones(new Set(zones));
+  }, [groupedRuns]);
 
   const toggleZone = (zone) => {
     setCollapsedZones(prev => {
@@ -162,9 +169,9 @@ export function RunChecklist({
                 </span>
               </div>
               {collapsedZones.has(zone) ? (
-                <ChevronDown size={18} style={{ color: 'rgba(255,255,255,0.5)' }} />
+                <ChevronRight size={18} style={{ color: 'rgba(255,255,255,0.5)' }} />
               ) : (
-                <ChevronUp size={18} style={{ color: 'rgba(255,255,255,0.5)' }} />
+                <ChevronDown size={18} style={{ color: '#00B4D8' }} />
               )}
             </button>
 

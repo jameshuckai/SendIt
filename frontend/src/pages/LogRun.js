@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
@@ -8,16 +7,15 @@ import { ResortSelector } from '@/components/ResortSelector';
 import { RunChecklist } from '@/components/RunChecklist';
 import { RunDetailSheet } from '@/components/RunDetailSheet';
 import { OfflineBanner } from '@/components/OfflineBanner';
-import { ResortMap } from '@/components/ResortMap';
+import { ResortMapImage } from '@/components/ResortMapImage';
 import { supabase } from '@/lib/supabase';
 import { useResortDetection, useRunChecklist, useSyncQueue, useOnlineStatus } from '@/lib/hooks';
 import { offlineStorage } from '@/lib/offline';
-import { MapPin, Mountain, ChevronDown, List, Map as MapIcon, Loader2 } from 'lucide-react';
+import { MapPin, Mountain } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function LogRun() {
-  const navigate = useNavigate();
-  const { profile, user } = useAuth();
+  const { profile } = useAuth();
   const isOnline = useOnlineStatus();
   
   // Resort detection
@@ -35,7 +33,6 @@ export default function LogRun() {
   const {
     runs,
     userLogs,
-    bucketList,
     isLoading,
     filter,
     setFilter,
@@ -51,34 +48,10 @@ export default function LogRun() {
   // Sync queue
   const { pendingCount, isSyncing, syncNow } = useSyncQueue(profile?.id);
 
-  // Lifts state
-  const [lifts, setLifts] = useState([]);
-
-  // Load lifts when resort changes
-  useEffect(() => {
-    const loadLifts = async () => {
-      if (!selectedResort?.id) return;
-      
-      try {
-        const { data } = await supabase
-          .from('lifts')
-          .select('*')
-          .eq('ski_area_id', selectedResort.id);
-        
-        if (data) setLifts(data);
-      } catch (error) {
-        console.log('Error loading lifts:', error);
-      }
-    };
-    
-    loadLifts();
-  }, [selectedResort?.id]);
-
   // UI state
   const [showResortSelector, setShowResortSelector] = useState(false);
   const [showRunDetail, setShowRunDetail] = useState(false);
   const [selectedRun, setSelectedRun] = useState(null);
-  const [viewMode, setViewMode] = useState(() => offlineStorage.getViewPreference());
 
   // Get last logged run
   const lastLog = userLogs.length > 0 ? userLogs[0] : null;
@@ -115,7 +88,6 @@ export default function LogRun() {
       });
       
       if (result.queued) {
-        // Show offline indicator
         toast.info('Saved offline — will sync when connected', {
           duration: 2000,
           style: {
@@ -178,13 +150,6 @@ export default function LogRun() {
     return userLogs.filter(log => log.run_id === runId).length;
   }, [userLogs]);
 
-  // Toggle view mode
-  const toggleViewMode = useCallback(() => {
-    const newMode = viewMode === 'list' ? 'map' : 'list';
-    setViewMode(newMode);
-    offlineStorage.setViewPreference(newMode);
-  }, [viewMode]);
-
   // Show resort selector if no resort selected and no recent resort
   useEffect(() => {
     if (!selectedResort && !offlineStorage.getLastResort() && allResorts.length > 0) {
@@ -207,7 +172,12 @@ export default function LogRun() {
 
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: '#12181B' }} data-testid="log-run-page">
-      <Header />
+      {/* Header with Resort Selector */}
+      <Header 
+        showResortSelector={true}
+        selectedResort={selectedResort}
+        onResortClick={() => setShowResortSelector(true)}
+      />
       
       {/* Offline Banner */}
       <OfflineBanner
@@ -218,96 +188,44 @@ export default function LogRun() {
       />
       
       <div className="p-6">
-        {/* Page Title */}
-        <h1 className="text-2xl font-bold text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-          Log a Run
-        </h1>
-
-        {/* Resort Selector Header */}
-        <div className="mb-6">
-          {/* Detected Resort Chip */}
+        {/* Page Title with GPS detection */}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Log a Run
+          </h1>
+          
+          {/* GPS Detected Banner */}
           {detectedResort && selectedResort?.id !== detectedResort.id && (
             <button
               onClick={() => handleResortSelect(detectedResort)}
-              className="flex items-center gap-2 px-3 py-2 rounded-full mb-3 transition-all hover:bg-white/10"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:bg-white/10"
               style={{
                 backgroundColor: 'rgba(0, 180, 216, 0.1)',
                 border: '1px solid rgba(0, 180, 216, 0.3)'
               }}
             >
-              <MapPin size={14} style={{ color: '#00B4D8' }} />
+              <MapPin size={12} style={{ color: '#00B4D8' }} />
               <span className="text-xs" style={{ color: '#00B4D8', fontFamily: 'Manrope, sans-serif' }}>
-                Detected: {detectedResort.name}
-              </span>
-              <span className="text-xs underline" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                Switch
+                {detectedResort.name}
               </span>
             </button>
           )}
-
-          {/* Selected Resort Card */}
-          <GlassCard
-            className="p-4 cursor-pointer transition-all hover:bg-white/10"
-            onClick={() => setShowResortSelector(true)}
-            data-testid="resort-selector-trigger"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div 
-                  className="w-12 h-12 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: 'rgba(0, 180, 216, 0.15)' }}
-                >
-                  {isDetecting ? (
-                    <Loader2 size={24} className="animate-spin" style={{ color: '#00B4D8' }} />
-                  ) : (
-                    <Mountain size={24} style={{ color: '#00B4D8' }} />
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                    {selectedResort?.name || 'Select Resort'}
-                  </h3>
-                  {selectedResort && (
-                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                      {[selectedResort.region, selectedResort.country].filter(Boolean).join(', ')}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <ChevronDown size={20} style={{ color: 'rgba(255,255,255,0.5)' }} />
-            </div>
-          </GlassCard>
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm font-medium text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+        {/* Static Resort Map */}
+        {selectedResort && (
+          <ResortMapImage resort={selectedResort} className="mb-6" />
+        )}
+
+        {/* Run count */}
+        {selectedResort && (
+          <p className="text-sm font-medium text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
             {runs.length} runs available
           </p>
-          <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}>
-            <button
-              onClick={() => setViewMode('list')}
-              className="p-2 rounded-full transition-all"
-              style={{
-                backgroundColor: viewMode === 'list' ? '#00B4D8' : 'transparent'
-              }}
-            >
-              <List size={16} style={{ color: viewMode === 'list' ? '#000' : 'rgba(255,255,255,0.6)' }} />
-            </button>
-            <button
-              onClick={() => setViewMode('map')}
-              className="p-2 rounded-full transition-all"
-              style={{
-                backgroundColor: viewMode === 'map' ? '#00B4D8' : 'transparent'
-              }}
-            >
-              <MapIcon size={16} style={{ color: viewMode === 'map' ? '#000' : 'rgba(255,255,255,0.6)' }} />
-            </button>
-          </div>
-        </div>
+        )}
 
         {/* Run Checklist */}
-        {selectedResort && viewMode === 'list' && (
+        {selectedResort && (
           <RunChecklist
             groupedRuns={getGroupedRuns()}
             getRunStatus={getRunStatus}
@@ -321,19 +239,6 @@ export default function LogRun() {
             lastRun={lastRun}
             region={profile?.difficulty_region}
             isLoading={isLoading}
-          />
-        )}
-
-        {/* Map View */}
-        {selectedResort && viewMode === 'map' && (
-          <ResortMap
-            runs={runs}
-            lifts={lifts}
-            resort={selectedResort}
-            getRunStatus={getRunStatus}
-            isInBucketList={isInBucketList}
-            onLogRun={handleLogRun}
-            region={profile?.difficulty_region}
           />
         )}
 
