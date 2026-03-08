@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { GlassCard } from '@/components/GlassCard';
@@ -22,15 +22,25 @@ export default function Onboarding() {
   
   const { profile, updateProfile } = useAuth();
   const navigate = useNavigate();
+  
+  // Ref to prevent duplicate fetches
+  const runsLoadedRef = useRef(false);
 
-  useEffect(() => {
-    loadRuns();
+  const loadRuns = useCallback(async () => {
+    if (runsLoadedRef.current) return;
+    
+    const { data } = await supabase.from('runs').select('*').limit(10);
+    if (data) {
+      setRuns(data);
+      runsLoadedRef.current = true;
+    }
   }, []);
 
-  const loadRuns = async () => {
-    const { data } = await supabase.from('runs').select('*').limit(10);
-    if (data) setRuns(data);
-  };
+  // Load runs ONCE on mount
+  useEffect(() => {
+    loadRuns();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency - run ONCE
 
   const handleSkip = async () => {
     await updateProfile({ onboarding_complete: true });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { GlassCard } from '@/components/GlassCard';
@@ -14,25 +14,32 @@ export default function RunDetail() {
   const [run, setRun] = useState(null);
   const [isInBucketList, setIsInBucketList] = useState(false);
   const [recentLogs, setRecentLogs] = useState([]);
+  
+  // Refs to prevent duplicate fetches
+  const runLoadedRef = useRef(null);
+  const bucketCheckedRef = useRef(null);
+  const logsLoadedRef = useRef(null);
 
-  useEffect(() => {
-    loadRun();
-    checkBucketList();
-    loadRecentLogs();
-  }, [id]);
-
-  const loadRun = async () => {
+  const loadRun = useCallback(async () => {
+    if (!id || runLoadedRef.current === id) return;
+    
     const { data } = await supabase
       .from('runs')
       .select('*')
       .eq('id', id)
       .single();
     
-    if (data) setRun(data);
-  };
+    if (data) {
+      setRun(data);
+      runLoadedRef.current = id;
+    }
+  }, [id]);
 
-  const checkBucketList = async () => {
-    if (!profile) return;
+  const checkBucketList = useCallback(async () => {
+    if (!profile?.id || !id) return;
+    const cacheKey = `${profile.id}-${id}`;
+    if (bucketCheckedRef.current === cacheKey) return;
+    
     const { data } = await supabase
       .from('bucket_list')
       .select('id')
@@ -41,9 +48,12 @@ export default function RunDetail() {
       .single();
     
     setIsInBucketList(!!data);
-  };
+    bucketCheckedRef.current = cacheKey;
+  }, [profile?.id, id]);
 
-  const loadRecentLogs = async () => {
+  const loadRecentLogs = useCallback(async () => {
+    if (!id || logsLoadedRef.current === id) return;
+    
     const { data } = await supabase
       .from('user_logs')
       .select('snow_condition, logged_at')
@@ -51,8 +61,33 @@ export default function RunDetail() {
       .order('logged_at', { ascending: false })
       .limit(3);
     
-    if (data) setRecentLogs(data);
-  };
+    if (data) {
+      setRecentLogs(data);
+      logsLoadedRef.current = id;
+    }
+  }, [id]);
+
+  // Load run data when id changes
+  useEffect(() => {
+    if (id) {
+      // Reset refs if id changed
+      if (runLoadedRef.current !== id) {
+        runLoadedRef.current = null;
+        logsLoadedRef.current = null;
+      }
+      loadRun();
+      loadRecentLogs();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // Only depend on id primitive
+
+  // Check bucket list when profile becomes available
+  useEffect(() => {
+    if (profile?.id && id) {
+      checkBucketList();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, id]); // Only depend on primitive ids
 
   const toggleBucketList = async () => {
     if (!profile) return;

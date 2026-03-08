@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useResort } from '@/contexts/ResortContext';
@@ -32,29 +32,16 @@ export default function Resorts() {
   const [difficultyFilter, setDifficultyFilter] = useState('');
   const [mountainFilter, setMountainFilter] = useState('');
   const [runTypeFilter, setRunTypeFilter] = useState('');
+  
+  // Refs to prevent duplicate fetches
+  const runsLoadedForRef = useRef(null);
+  const liftsLoadedForRef = useRef(null);
+  const bucketLoadedRef = useRef(false);
+  const completedLoadedRef = useRef(false);
 
-  // Load data when selected resort changes
-  useEffect(() => {
-    if (selectedResort) {
-      loadRuns();
-      loadLifts();
-      loadBucketList();
-      loadCompletedRuns();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedResort?.id]);
-
-  useEffect(() => {
-    if (viewMode === 'runs') {
-      filterRuns();
-    } else {
-      filterLifts();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runs, lifts, searchQuery, difficultyFilter, mountainFilter, runTypeFilter, viewMode]);
-
-  const loadRuns = async () => {
-    if (!selectedResort) return;
+  const loadRuns = useCallback(async () => {
+    if (!selectedResort?.id) return;
+    if (runsLoadedForRef.current === selectedResort.id) return;
     
     const { data } = await supabase
       .from('runs')
@@ -62,11 +49,15 @@ export default function Resorts() {
       .eq('ski_area_id', selectedResort.id)
       .order('name');
     
-    if (data) setRuns(data);
-  };
+    if (data) {
+      setRuns(data);
+      runsLoadedForRef.current = selectedResort.id;
+    }
+  }, [selectedResort?.id]);
 
-  const loadLifts = async () => {
-    if (!selectedResort) return;
+  const loadLifts = useCallback(async () => {
+    if (!selectedResort?.id) return;
+    if (liftsLoadedForRef.current === selectedResort.id) return;
     
     const { data } = await supabase
       .from('lifts')
@@ -74,21 +65,31 @@ export default function Resorts() {
       .eq('ski_area_id', selectedResort.id)
       .order('name');
     
-    if (data) setLifts(data);
-  };
+    if (data) {
+      setLifts(data);
+      liftsLoadedForRef.current = selectedResort.id;
+    }
+  }, [selectedResort?.id]);
 
-  const loadBucketList = async () => {
-    if (!profile) return;
+  const loadBucketList = useCallback(async () => {
+    if (!profile?.id) return;
+    if (bucketLoadedRef.current) return;
+    
     const { data } = await supabase
       .from('bucket_list')
       .select('run_id')
       .eq('user_id', profile.id);
     
-    if (data) setBucketListIds(data.map(item => item.run_id));
-  };
+    if (data) {
+      setBucketListIds(data.map(item => item.run_id));
+      bucketLoadedRef.current = true;
+    }
+  }, [profile?.id]);
 
-  const loadCompletedRuns = async () => {
-    if (!profile) return;
+  const loadCompletedRuns = useCallback(async () => {
+    if (!profile?.id) return;
+    if (completedLoadedRef.current) return;
+    
     const { data } = await supabase
       .from('user_logs')
       .select('run_id')
@@ -98,8 +99,42 @@ export default function Resorts() {
       // Get unique run IDs
       const uniqueRunIds = [...new Set(data.map(item => item.run_id))];
       setCompletedRunIds(uniqueRunIds);
+      completedLoadedRef.current = true;
     }
-  };
+  }, [profile?.id]);
+
+  // Load data when selected resort changes
+  useEffect(() => {
+    if (selectedResort?.id) {
+      // Reset refs if resort changed
+      if (runsLoadedForRef.current !== selectedResort.id) {
+        runsLoadedForRef.current = null;
+        liftsLoadedForRef.current = null;
+      }
+      loadRuns();
+      loadLifts();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedResort?.id]); // Only depend on selectedResort.id primitive
+
+  // Load user data when profile becomes available
+  useEffect(() => {
+    if (profile?.id) {
+      loadBucketList();
+      loadCompletedRuns();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id]); // Only depend on profile.id primitive
+
+  // Filter when criteria change
+  useEffect(() => {
+    if (viewMode === 'runs') {
+      filterRuns();
+    } else {
+      filterLifts();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runs, lifts, searchQuery, difficultyFilter, mountainFilter, runTypeFilter, viewMode]);
 
   const filterRuns = () => {
     let filtered = runs;

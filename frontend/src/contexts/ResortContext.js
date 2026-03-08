@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/lib/supabase';
 import { offlineStorage, checkOnlineStatus, getCurrentPosition } from '@/lib/offline';
@@ -22,8 +22,18 @@ export function ResortProvider({ children }) {
   const [recentResorts, setRecentResorts] = useState([]);
   const [myResorts, setMyResorts] = useState([]);
 
-  // Load all resorts from Supabase
-  const loadResorts = useCallback(async () => {
+  // Refs to prevent duplicate fetches
+  const resortsLoadedRef = useRef(false);
+  const userResortsLoadedRef = useRef(false);
+  const initializingRef = useRef(false);
+
+  // Load all resorts from Supabase - ONLY ONCE
+  const loadResorts = useCallback(async (force = false) => {
+    // Prevent duplicate fetches
+    if (resortsLoadedRef.current && !force) {
+      return allResorts;
+    }
+    
     try {
       // Try cache first for instant load
       const cached = await offlineStorage.getCachedResorts();
@@ -40,20 +50,28 @@ export function ResortProvider({ children }) {
 
         if (!error && data) {
           setAllResorts(data);
+          resortsLoadedRef.current = true;
           await offlineStorage.cacheResorts(data);
           return data;
         }
       }
+      resortsLoadedRef.current = true;
       return cached || [];
     } catch (error) {
       console.error('Error loading resorts:', error);
       return [];
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load user's recent resorts from logs
-  const loadUserResorts = useCallback(async () => {
+  const loadUserResorts = useCallback(async (force = false) => {
     if (!userId) return;
+    
+    // Prevent duplicate fetches
+    if (userResortsLoadedRef.current && !force) {
+      return;
+    }
 
     try {
       const { data: recentData } = await supabase
@@ -81,6 +99,7 @@ export function ResortProvider({ children }) {
         const recent = Array.from(resortMap.values()).slice(0, 5);
         setRecentResorts(recent);
         setMyResorts(Array.from(resortMap.values()));
+        userResortsLoadedRef.current = true;
       }
     } catch (error) {
       console.error('Error loading user resorts:', error);
@@ -114,7 +133,8 @@ export function ResortProvider({ children }) {
       setIsDetecting(false);
     }
     return null;
-  }, [allResorts]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Set selected resort with persistence to localStorage AND Supabase
   const setSelectedResort = useCallback(async (resort) => {
@@ -142,8 +162,12 @@ export function ResortProvider({ children }) {
     }
   }, [userId]);
 
-  // Initialize: load resorts, then restore selection
+  // Initialize: load resorts, then restore selection - RUNS ONCE
   useEffect(() => {
+    // Prevent multiple initializations
+    if (initializingRef.current) return;
+    initializingRef.current = true;
+    
     const initialize = async () => {
       setLoading(true);
 
@@ -184,14 +208,16 @@ export function ResortProvider({ children }) {
     };
 
     initialize();
-  }, [loadResorts, detectResort, profile?.home_resort_id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - run ONCE on mount
 
-  // Load user resorts when userId changes
+  // Load user resorts when userId changes (separate from initialization)
   useEffect(() => {
     if (userId) {
       loadUserResorts();
     }
-  }, [userId, loadUserResorts]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]); // Only depend on userId primitive
 
   return (
     <ResortContext.Provider value={{

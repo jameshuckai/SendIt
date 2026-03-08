@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, getSupabaseErrorMessage } from './supabase';
 import { offlineStorage, checkOnlineStatus, getCurrentPosition, generateSessionId, isToday, isThisSeason } from './offline';
 
@@ -31,8 +31,15 @@ export function useResortDetection(userId) {
   const [recentResorts, setRecentResorts] = useState([]);
   const [myResorts, setMyResorts] = useState([]);
 
-  // Load all resorts
+  // Refs to prevent duplicate fetches and track initialization
+  const resortsLoadedRef = useRef(false);
+  const userResortsLoadedRef = useRef(false);
+  const initializedRef = useRef(false);
+
+  // Load all resorts - ONCE
   const loadResorts = useCallback(async () => {
+    if (resortsLoadedRef.current) return;
+    
     try {
       // Try cache first
       const cached = await offlineStorage.getCachedResorts();
@@ -49,6 +56,7 @@ export function useResortDetection(userId) {
         
         if (data) {
           setAllResorts(data);
+          resortsLoadedRef.current = true;
           await offlineStorage.cacheResorts(data);
         }
       }
@@ -59,7 +67,7 @@ export function useResortDetection(userId) {
 
   // Load user's recent and personal resorts
   const loadUserResorts = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || userResortsLoadedRef.current) return;
 
     try {
       // Get recent resorts from user_logs
@@ -89,6 +97,7 @@ export function useResortDetection(userId) {
         const recent = Array.from(resortMap.values()).slice(0, 5);
         setRecentResorts(recent);
         setMyResorts(Array.from(resortMap.values()));
+        userResortsLoadedRef.current = true;
       }
     } catch (error) {
       console.error('Error loading user resorts:', error);
@@ -96,7 +105,7 @@ export function useResortDetection(userId) {
   }, [userId]);
 
   // Detect resort via GPS
-  const detectResort = useCallback(async () => {
+  const detectResort = useCallback(async (resortsToSearch) => {
     setIsDetecting(true);
     try {
       const position = await getCurrentPosition();
@@ -109,7 +118,7 @@ export function useResortDetection(userId) {
 
       if (data && data.length > 0 && data[0].distance_km < 50) {
         // Found a resort within 50km
-        const detected = allResorts.find(r => r.id === data[0].id);
+        const detected = resortsToSearch.find(r => r.id === data[0].id);
         if (detected) {
           setDetectedResort(detected);
           return detected;
@@ -121,7 +130,7 @@ export function useResortDetection(userId) {
       setIsDetecting(false);
     }
     return null;
-  }, [allResorts]);
+  }, []);
 
   // Select a resort
   const selectResort = useCallback((resort) => {
@@ -131,36 +140,44 @@ export function useResortDetection(userId) {
     }
   }, []);
 
-  // Initialize resort selection
+  // Initialize resort selection - RUNS ONCE
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    
     const initResort = async () => {
       await loadResorts();
-      await loadUserResorts();
+      
+      // Use a callback to get fresh allResorts value
+      setAllResorts(currentResorts => {
+        if (currentResorts.length > 0) {
+          // Try to load last used resort first
+          const lastResortId = offlineStorage.getLastResort();
+          if (lastResortId) {
+            const lastResort = currentResorts.find(r => r.id === lastResortId);
+            if (lastResort) {
+              setSelectedResort(lastResort);
+            }
+          }
 
-      // Try to load last used resort first
-      const lastResortId = offlineStorage.getLastResort();
-      if (lastResortId && allResorts.length > 0) {
-        const lastResort = allResorts.find(r => r.id === lastResortId);
-        if (lastResort) {
-          setSelectedResort(lastResort);
+          // Try GPS detection in background
+          detectResort(currentResorts);
         }
-      }
-
-      // Try GPS detection in background
-      detectResort().then(detected => {
-        if (detected && (!selectedResort || selectedResort.id !== detected.id)) {
-          setDetectedResort(detected);
-        }
+        return currentResorts;
       });
     };
 
-    if (allResorts.length === 0) {
-      loadResorts();
-    }
+    initResort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency - run ONCE
+
+  // Load user resorts when userId becomes available
+  useEffect(() => {
     if (userId) {
       loadUserResorts();
     }
-  }, [userId, loadResorts, loadUserResorts, detectResort, allResorts, selectedResort]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps  
+  }, [userId]); // Only depend on userId primitive
 
   return {
     selectedResort,
@@ -183,10 +200,18 @@ export function useRunChecklist(userId, resortId) {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // 'all', 'today', 'season', 'lifetime', 'never'
   const isOnline = useOnlineStatus();
+  
+  // Refs to prevent duplicate fetches
+  const runsLoadedForRef = useRef(null);
+  const logsLoadedRef = useRef(false);
+  const bucketLoadedRef = useRef(false);
 
   // Load runs for resort
   const loadRuns = useCallback(async () => {
     if (!resortId) return;
+    
+    // Skip if already loaded for this resort
+    if (runsLoadedForRef.current === resortId) return;
     
     setIsLoading(true);
     try {
@@ -206,6 +231,7 @@ export function useRunChecklist(userId, resortId) {
         
         if (data) {
           setRuns(data);
+          runsLoadedForRef.current = resortId;
           await offlineStorage.cacheRuns(resortId, data);
         }
       }
@@ -219,6 +245,9 @@ export function useRunChecklist(userId, resortId) {
   // Load user's logs
   const loadUserLogs = useCallback(async () => {
     if (!userId) return;
+    
+    // Skip if already loaded
+    if (logsLoadedRef.current) return;
 
     try {
       const cached = await offlineStorage.getCachedLogs(userId);
@@ -235,6 +264,7 @@ export function useRunChecklist(userId, resortId) {
         
         if (data) {
           setUserLogs(data);
+          logsLoadedRef.current = true;
           await offlineStorage.cacheLogs(userId, data);
         }
       }
@@ -246,6 +276,9 @@ export function useRunChecklist(userId, resortId) {
   // Load bucket list
   const loadBucketList = useCallback(async () => {
     if (!userId) return;
+    
+    // Skip if already loaded
+    if (bucketLoadedRef.current) return;
 
     try {
       const cached = await offlineStorage.getCachedBucketList(userId);
@@ -262,6 +295,7 @@ export function useRunChecklist(userId, resortId) {
         
         if (data) {
           setBucketList(data);
+          bucketLoadedRef.current = true;
           await offlineStorage.cacheBucketList(userId, data);
         }
       }
@@ -396,11 +430,26 @@ export function useRunChecklist(userId, resortId) {
     ).length;
   }, [userLogs]);
 
+  // Load data when resortId changes (runs depend on resort)
   useEffect(() => {
-    loadRuns();
-    loadUserLogs();
-    loadBucketList();
-  }, [loadRuns, loadUserLogs, loadBucketList]);
+    if (resortId) {
+      // Reset runs loaded ref when resort changes
+      if (runsLoadedForRef.current !== resortId) {
+        runsLoadedForRef.current = null;
+      }
+      loadRuns();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resortId]); // Only depend on resortId primitive
+
+  // Load user data when userId becomes available - ONCE
+  useEffect(() => {
+    if (userId) {
+      loadUserLogs();
+      loadBucketList();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]); // Only depend on userId primitive
 
   return {
     runs,
@@ -417,6 +466,10 @@ export function useRunChecklist(userId, resortId) {
     getGroupedRuns,
     getTodayCount,
     refresh: () => {
+      // Force refresh by resetting refs
+      runsLoadedForRef.current = null;
+      logsLoadedRef.current = false;
+      bucketLoadedRef.current = false;
       loadRuns();
       loadUserLogs();
       loadBucketList();
@@ -429,6 +482,10 @@ export function useSyncQueue(userId) {
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const isOnline = useOnlineStatus();
+  
+  // Ref to prevent duplicate syncs
+  const syncingRef = useRef(false);
+  const checkedRef = useRef(false);
 
   const checkPending = useCallback(async () => {
     const queue = await offlineStorage.getSyncQueue();
@@ -436,13 +493,15 @@ export function useSyncQueue(userId) {
   }, []);
 
   const syncNow = useCallback(async () => {
-    if (!isOnline || isSyncing) return;
-
+    if (!isOnline || syncingRef.current) return;
+    
+    syncingRef.current = true;
     setIsSyncing(true);
     try {
       const queue = await offlineStorage.getSyncQueue();
       if (queue.length === 0) {
         setIsSyncing(false);
+        syncingRef.current = false;
         return;
       }
 
@@ -473,20 +532,26 @@ export function useSyncQueue(userId) {
       return { synced: 0, error: errorMessage };
     } finally {
       setIsSyncing(false);
+      syncingRef.current = false;
     }
-  }, [isOnline, isSyncing]);
+  }, [isOnline]);
 
-  // Auto-sync when coming online
+  // Auto-sync when coming online - ONCE per online state change
   useEffect(() => {
-    if (isOnline) {
+    if (isOnline && !syncingRef.current) {
       syncNow();
     }
-  }, [isOnline, syncNow]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline]); // Only depend on isOnline
 
-  // Check pending on mount
+  // Check pending on mount - ONCE
   useEffect(() => {
-    checkPending();
-  }, [checkPending]);
+    if (!checkedRef.current) {
+      checkedRef.current = true;
+      checkPending();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency - run ONCE
 
   return {
     pendingCount,
@@ -503,6 +568,9 @@ export function useDaySummary(userId, date = new Date()) {
   const [photos, setPhotos] = useState([]);
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Ref to track loaded date
+  const loadedDateRef = useRef(null);
 
   // Ensure date is valid
   const safeDate = date instanceof Date && !isNaN(date) ? date : new Date();
@@ -513,6 +581,9 @@ export function useDaySummary(userId, date = new Date()) {
       setIsLoading(false);
       return;
     }
+    
+    // Skip if already loaded for this date
+    if (loadedDateRef.current === dateStr) return;
 
     setIsLoading(true);
     try {
@@ -527,6 +598,7 @@ export function useDaySummary(userId, date = new Date()) {
 
       if (logsData) {
         setLogs(logsData);
+        loadedDateRef.current = dateStr;
 
         // Calculate stats
         const totalRuns = logsData.length;
@@ -652,9 +724,15 @@ export function useDaySummary(userId, date = new Date()) {
     }
   }, [loadDaySummary]);
 
+  // Load day summary when userId or dateStr changes
   useEffect(() => {
+    // Reset loaded ref when date changes
+    if (loadedDateRef.current !== dateStr) {
+      loadedDateRef.current = null;
+    }
     loadDaySummary();
-  }, [loadDaySummary]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, dateStr]); // Only depend on primitives
 
   return {
     summary,
@@ -664,6 +742,9 @@ export function useDaySummary(userId, date = new Date()) {
     isLoading,
     saveSummary,
     deleteLog,
-    refresh: loadDaySummary
+    refresh: () => {
+      loadedDateRef.current = null;
+      loadDaySummary();
+    }
   };
 }

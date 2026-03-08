@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useResort } from '@/contexts/ResortContext';
@@ -19,6 +19,10 @@ export default function Home() {
   const [bucketList, setBucketList] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Refs to prevent duplicate fetches
+  const statsLoadedRef = useRef(null); // Store resortId + profileId to detect changes
+  const loadingRef = useRef(false);
 
   // Check if user has no goals set (empty state condition)
   const hasNoGoals = !profile?.season_goal_days && !profile?.season_goal_vertical_ft;
@@ -40,9 +44,18 @@ export default function Home() {
 
   const greeting = getGreeting();
 
-  const loadStats = async () => {
-    if (!profile) return;
+  const loadStats = useCallback(async () => {
+    if (!profile?.id) return;
+    
+    // Create a cache key based on profile and resort
+    const cacheKey = `${profile.id}-${selectedResort?.id || 'all'}`;
+    
+    // Skip if already loading or already loaded for this combination
+    if (loadingRef.current || statsLoadedRef.current === cacheKey) return;
+    
+    loadingRef.current = true;
     setIsLoading(true);
+    
     try {
       // Build query - filter by selected resort if available
       let logsQuery = supabase
@@ -77,15 +90,19 @@ export default function Home() {
           totalRuns,
           completedRuns
         });
+        
+        statsLoadedRef.current = cacheKey;
       }
     } catch (error) {
       console.error('Error loading stats:', error);
+    } finally {
+      setIsLoading(false);
+      loadingRef.current = false;
     }
-    setIsLoading(false);
-  };
+  }, [profile?.id, selectedResort?.id]);
 
-  const loadBucketList = async () => {
-    if (!profile) return;
+  const loadBucketList = useCallback(async () => {
+    if (!profile?.id) return;
     try {
       // Filter bucket list by selected resort if available
       let query = supabase
@@ -104,10 +121,10 @@ export default function Home() {
     } catch (error) {
       console.log('Error loading bucket list:', error);
     }
-  };
+  }, [profile?.id, selectedResort?.id]);
 
-  const loadRecentActivity = async () => {
-    if (!profile) return;
+  const loadRecentActivity = useCallback(async () => {
+    if (!profile?.id) return;
     try {
       let query = supabase
         .from('user_logs')
@@ -125,17 +142,22 @@ export default function Home() {
     } catch (error) {
       console.log('Error loading recent activity:', error);
     }
-  };
+  }, [profile?.id, selectedResort?.id]);
 
   // Reload data when profile or selected resort changes
   useEffect(() => {
-    if (profile) {
+    if (profile?.id) {
+      // Reset cache when resort changes
+      const cacheKey = `${profile.id}-${selectedResort?.id || 'all'}`;
+      if (statsLoadedRef.current !== cacheKey) {
+        statsLoadedRef.current = null;
+      }
       loadStats();
       loadBucketList();
       loadRecentActivity();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, selectedResort?.id]);
+  }, [profile?.id, selectedResort?.id]); // Only depend on primitive ids
 
   // Empty State Component
   const EmptyStateHero = () => (

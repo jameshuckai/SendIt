@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Header } from '@/components/Header';
@@ -18,34 +18,61 @@ export default function RunDirectory() {
   const [mountainFilter, setMountainFilter] = useState('');
   const [runTypeFilter, setRunTypeFilter] = useState('');
   const [bucketListIds, setBucketListIds] = useState([]);
+  
+  // Refs to prevent duplicate fetches
+  const runsLoadedRef = useRef(false);
+  const bucketLoadedRef = useRef(false);
+  const profileIdRef = useRef(null);
 
-  useEffect(() => {
-    loadRuns();
-    loadBucketList();
-  }, []);
-
-  useEffect(() => {
-    filterRuns();
-  }, [runs, searchQuery, difficultyFilter, mountainFilter, runTypeFilter]);
-
-  const loadRuns = async () => {
+  const loadRuns = useCallback(async () => {
+    if (runsLoadedRef.current) return;
+    
     const { data } = await supabase
       .from('runs')
       .select('*')
       .order('name');
     
-    if (data) setRuns(data);
-  };
+    if (data) {
+      setRuns(data);
+      runsLoadedRef.current = true;
+    }
+  }, []);
 
-  const loadBucketList = async () => {
-    if (!profile) return;
+  const loadBucketList = useCallback(async () => {
+    if (!profile?.id) return;
+    if (bucketLoadedRef.current && profileIdRef.current === profile.id) return;
+    
     const { data } = await supabase
       .from('bucket_list')
       .select('run_id')
       .eq('user_id', profile.id);
     
-    if (data) setBucketListIds(data.map(item => item.run_id));
-  };
+    if (data) {
+      setBucketListIds(data.map(item => item.run_id));
+      bucketLoadedRef.current = true;
+      profileIdRef.current = profile.id;
+    }
+  }, [profile?.id]);
+
+  // Load runs ONCE on mount
+  useEffect(() => {
+    loadRuns();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency - run ONCE
+
+  // Load bucket list when profile becomes available
+  useEffect(() => {
+    if (profile?.id) {
+      loadBucketList();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id]); // Only depend on profile.id primitive
+
+  // Filter runs when filter criteria change
+  useEffect(() => {
+    filterRuns();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runs, searchQuery, difficultyFilter, mountainFilter, runTypeFilter]);
 
   const filterRuns = () => {
     let filtered = runs;
