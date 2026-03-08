@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { detectRegion } from '@/lib/difficulty-system';
 
@@ -10,49 +10,44 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // Ref to prevent double subscription in StrictMode
+  const subscribedRef = useRef(false);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Session error:', error);
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
-      
+    // Prevent double subscription in React StrictMode
+    if (subscribedRef.current) return;
+    subscribedRef.current = true;
+    
+    // Get initial session once
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
       if (session?.user) {
-        setUser(session.user);
         loadProfile(session.user.id);
       } else {
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
-      }
-    }).catch(err => {
-      console.error('Failed to get session:', err);
-      setUser(null);
-      setProfile(null);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('Auth state changed:', _event, session?.user?.email);
-      
-      if (session?.user) {
-        setUser(session.user);
-        loadProfile(session.user.id);
-      } else {
-        setUser(null);
-        setProfile(null);
         setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    // Single auth state listener with cleanup
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          loadProfile(session.user.id);
+        } else {
+          setProfile(null);
+          setLoading(false);
+        }
+      }
+    );
+
+    // Critical cleanup — prevents orphaned locks
+    return () => {
+      subscription.unsubscribe();
+      subscribedRef.current = false;
+    };
+  }, []); // empty array — runs exactly once
 
   const loadProfile = async (userId) => {
     try {
