@@ -1,8 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Settings, LogOut, ChevronDown, Mountain } from 'lucide-react';
+import { Settings, LogOut, ChevronDown, Mountain } from 'lucide-react';
 import { GlassCard } from './GlassCard';
+
+// Consistent logo URL used across the app
+const LOGO_URL = 'https://customer-assets.emergentagent.com/job_blackcomb-beta/artifacts/za2ypiek_SendItLogo.png';
 
 export function Header({ 
   showResortSelector = false, 
@@ -51,11 +54,17 @@ export function Header({
     >
       {/* Left side - Logo and Resort Selector */}
       <div className="flex items-center gap-3">
-        <img 
-          src="https://customer-assets.emergentagent.com/job_blackcomb-beta/artifacts/za2ypiek_SendItLogo.png"
-          alt="Sendit Logo"
-          className="h-10 w-10 object-contain"
-        />
+        <Link 
+          to="/home" 
+          className="transition-opacity hover:opacity-85"
+          style={{ textDecoration: 'none', border: 'none' }}
+        >
+          <img 
+            src={LOGO_URL}
+            alt="Sendit Logo"
+            className="h-12 w-12 object-contain"
+          />
+        </Link>
         
         {showResortSelector && onResortClick ? (
           <button
@@ -77,12 +86,13 @@ export function Header({
             <ChevronDown size={14} style={{ color: '#00B4D8' }} />
           </button>
         ) : (
-          <span 
-            className="text-xl font-bold text-white"
-            style={{ fontFamily: 'Manrope, sans-serif' }}
+          <Link 
+            to="/home"
+            className="text-xl font-bold text-white transition-opacity hover:opacity-85"
+            style={{ fontFamily: 'Manrope, sans-serif', textDecoration: 'none' }}
           >
             Sendit
-          </span>
+          </Link>
         )}
       </div>
 

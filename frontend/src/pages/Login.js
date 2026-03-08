@@ -5,6 +5,9 @@ import { GlassCard } from '@/components/GlassCard';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
 
+// Consistent logo URL used across the app
+const LOGO_URL = 'https://customer-assets.emergentagent.com/job_blackcomb-beta/artifacts/za2ypiek_SendItLogo.png';
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,25 +33,29 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#12181B' }}>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ backgroundColor: '#12181B' }}>
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="flex justify-center mb-8">
-          <div className="bg-white rounded-2xl p-3">
+        {/* Hero Logo */}
+        <div className="flex justify-center mb-12">
+          <Link 
+            to="/home" 
+            className="transition-opacity hover:opacity-85"
+            style={{ textDecoration: 'none', border: 'none' }}
+          >
             <img 
-              src="https://customer-assets.emergentagent.com/job_1e46d1c6-0952-4bbf-8568-c3dd1ef58235/artifacts/jrbl08is_SendItLogoPNG.png" 
+              src={LOGO_URL}
               alt="Sendit Logo" 
-              className="h-20 w-20"
+              className="h-32 w-32 object-contain"
             />
-          </div>
+          </Link>
         </div>
 
         <GlassCard className="p-8">
-          <h1 className="text-3xl font-bold mb-2 text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <h1 className="text-3xl font-bold mb-2 text-white text-center" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Welcome Back
           </h1>
-          <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Ready to track your season? 🏔️
+          <p className="text-sm mb-8 text-center" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            Ready to track your season?
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -108,12 +115,13 @@ export default function Login() {
               data-testid="login-submit"
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-full font-semibold transition-all"
+              className="w-full py-3 rounded-full font-semibold transition-all mt-6"
               style={{
-                backgroundColor: '#00B4D8',
+                background: 'linear-gradient(135deg, #00B4D8 0%, #0077B6 100%)',
                 color: '#000000',
                 fontFamily: 'Manrope, sans-serif',
-                opacity: loading ? 0.7 : 1
+                opacity: loading ? 0.7 : 1,
+                boxShadow: '0 4px 20px rgba(0, 180, 216, 0.3)'
               }}
             >
               {loading ? 'Signing in...' : 'Sign In'}
