@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { ResortProvider } from '@/contexts/ResortContext';
 import { Toaster } from 'sonner';
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
@@ -96,23 +97,25 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-        <Toaster 
-          position="top-center"
-          toastOptions={{
-            style: {
-              background: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(12px)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderLeft: '3px solid #00E676',
-              borderRadius: '12px',
-              color: 'white',
-              fontFamily: 'Manrope, sans-serif',
-            },
-          }}
-        />
-      </BrowserRouter>
+      <ResortProvider>
+        <BrowserRouter>
+          <AppRoutes />
+          <Toaster 
+            position="top-center"
+            toastOptions={{
+              style: {
+                background: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderLeft: '3px solid #00E676',
+                borderRadius: '12px',
+                color: 'white',
+                fontFamily: 'Manrope, sans-serif',
+              },
+            }}
+          />
+        </BrowserRouter>
+      </ResortProvider>
     </AuthProvider>
   );
 }

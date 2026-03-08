@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useResort } from '@/contexts/ResortContext';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { GlassCard } from '@/components/GlassCard';
@@ -12,11 +13,11 @@ import { Heart, Mountain, TrendingUp, MapPin, Snowflake, Plus } from 'lucide-rea
 
 export default function Home() {
   const { profile } = useAuth();
+  const { selectedResort } = useResort();
   const navigate = useNavigate();
   const [stats, setStats] = useState({ daysLogged: 0, verticalLogged: 0, completionPercent: 0, totalRuns: 0, completedRuns: 0 });
   const [bucketList, setBucketList] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
-  const [homeResort, setHomeResort] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Check if user has no goals set (empty state condition)
@@ -43,15 +44,24 @@ export default function Home() {
     if (!profile) return;
     setIsLoading(true);
     try {
-      const { data: logs } = await supabase
+      // Build query - filter by selected resort if available
+      let logsQuery = supabase
         .from('user_logs')
         .select('run_id, runs(vertical_ft, ski_area_id)')
         .eq('user_id', profile.id);
+      
+      if (selectedResort?.id) {
+        logsQuery = logsQuery.eq('ski_area_id', selectedResort.id);
+      }
+      
+      const { data: logs } = await logsQuery;
 
-      // Get total runs at user's home resort or first resort
-      const { data: allRuns } = await supabase
-        .from('runs')
-        .select('id, ski_area_id');
+      // Get total runs for selected resort or all
+      let runsQuery = supabase.from('runs').select('id, ski_area_id');
+      if (selectedResort?.id) {
+        runsQuery = runsQuery.eq('ski_area_id', selectedResort.id);
+      }
+      const { data: allRuns } = await runsQuery;
 
       if (logs && allRuns) {
         const uniqueRunIds = new Set(logs.map(l => l.run_id));
@@ -74,31 +84,22 @@ export default function Home() {
     setIsLoading(false);
   };
 
-  const loadHomeResort = async () => {
-    try {
-      // Get the first resort as home resort for now
-      const { data } = await supabase
-        .from('ski_areas')
-        .select('*')
-        .limit(1)
-        .single();
-      
-      if (data) setHomeResort(data);
-    } catch (error) {
-      console.log('Error loading home resort:', error);
-    }
-  };
-
   const loadBucketList = async () => {
     if (!profile) return;
     try {
-      const { data } = await supabase
+      // Filter bucket list by selected resort if available
+      let query = supabase
         .from('bucket_list')
         .select('*, runs(*)')
         .eq('user_id', profile.id)
         .eq('is_completed', false)
         .limit(5);
+      
+      if (selectedResort?.id) {
+        query = query.eq('runs.ski_area_id', selectedResort.id);
+      }
 
+      const { data } = await query;
       if (data) setBucketList(data);
     } catch (error) {
       console.log('Error loading bucket list:', error);
@@ -108,28 +109,33 @@ export default function Home() {
   const loadRecentActivity = async () => {
     if (!profile) return;
     try {
-      const { data } = await supabase
+      let query = supabase
         .from('user_logs')
         .select('*, runs(name, difficulty)')
         .eq('user_id', profile.id)
         .order('logged_at', { ascending: false })
         .limit(5);
+      
+      if (selectedResort?.id) {
+        query = query.eq('ski_area_id', selectedResort.id);
+      }
 
+      const { data } = await query;
       if (data) setRecentActivity(data);
     } catch (error) {
       console.log('Error loading recent activity:', error);
     }
   };
 
+  // Reload data when profile or selected resort changes
   useEffect(() => {
     if (profile) {
       loadStats();
       loadBucketList();
       loadRecentActivity();
-      loadHomeResort();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile]);
+  }, [profile, selectedResort?.id]);
 
   // Empty State Component
   const EmptyStateHero = () => (
@@ -243,8 +249,8 @@ export default function Home() {
           {format(new Date(), 'EEEE, MMMM d')} →
         </button>
 
-        {/* Home Resort Snow Widget */}
-        {homeResort && (
+        {/* Selected Resort Snow Widget */}
+        {selectedResort && (
           <div 
             className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-full cursor-pointer transition-all hover:bg-white/10"
             style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
@@ -253,7 +259,7 @@ export default function Home() {
           >
             <Snowflake size={14} style={{ color: '#00B4D8' }} />
             <span className="text-xs" style={{ color: 'rgba(255,255,255,0.8)', fontFamily: 'Manrope, sans-serif' }}>
-              {homeResort.name}
+              {selectedResort.name}
             </span>
             <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(0, 180, 216, 0.2)', color: '#00B4D8' }}>
               Fresh snow

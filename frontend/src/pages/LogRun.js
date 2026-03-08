@@ -1,16 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useResort } from '@/contexts/ResortContext';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { GlassCard } from '@/components/GlassCard';
-import { ResortSelector } from '@/components/ResortSelector';
 import { RunChecklist } from '@/components/RunChecklist';
 import { RunDetailSheet } from '@/components/RunDetailSheet';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { ResortMapImage } from '@/components/ResortMapImage';
 import { supabase } from '@/lib/supabase';
-import { useResortDetection, useRunChecklist, useSyncQueue, useOnlineStatus } from '@/lib/hooks';
-import { offlineStorage } from '@/lib/offline';
+import { useRunChecklist, useSyncQueue, useOnlineStatus } from '@/lib/hooks';
 import { MapPin, Mountain } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -31,16 +30,8 @@ export default function LogRun() {
     });
   }, [userId, profile, user]);
   
-  // Resort detection
-  const {
-    selectedResort,
-    setSelectedResort,
-    detectedResort,
-    isDetecting,
-    allResorts,
-    recentResorts,
-    myResorts
-  } = useResortDetection(userId);
+  // Use global resort context
+  const { selectedResort, detectedResort, setSelectedResort } = useResort();
 
   // Run checklist
   const {
@@ -62,19 +53,12 @@ export default function LogRun() {
   const { pendingCount, isSyncing, syncNow } = useSyncQueue(userId);
 
   // UI state
-  const [showResortSelector, setShowResortSelector] = useState(false);
   const [showRunDetail, setShowRunDetail] = useState(false);
   const [selectedRun, setSelectedRun] = useState(null);
 
   // Get last logged run
   const lastLog = userLogs.length > 0 ? userLogs[0] : null;
   const lastRun = lastLog ? { ...lastLog, runs: runs.find(r => r.id === lastLog.run_id) } : null;
-
-  // Handle resort selection
-  const handleResortSelect = useCallback((resort) => {
-    setSelectedResort(resort);
-    setShowResortSelector(false);
-  }, [setSelectedResort]);
 
   // Handle run tap (show detail)
   const handleRunTap = useCallback((run) => {
@@ -209,34 +193,10 @@ export default function LogRun() {
     return userLogs.filter(log => log.run_id === runId).length;
   }, [userLogs]);
 
-  // Show resort selector if no resort selected and no recent resort
-  useEffect(() => {
-    if (!selectedResort && !offlineStorage.getLastResort() && allResorts.length > 0) {
-      setShowResortSelector(true);
-    }
-  }, [selectedResort, allResorts]);
-
-  // Auto-select first resort if none selected
-  useEffect(() => {
-    if (!selectedResort && allResorts.length > 0) {
-      const lastResortId = offlineStorage.getLastResort();
-      const lastResort = allResorts.find(r => r.id === lastResortId);
-      if (lastResort) {
-        setSelectedResort(lastResort);
-      } else {
-        setSelectedResort(allResorts[0]);
-      }
-    }
-  }, [selectedResort, allResorts, setSelectedResort]);
-
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: '#12181B' }} data-testid="log-run-page">
-      {/* Header with Resort Selector */}
-      <Header 
-        showResortSelector={true}
-        selectedResort={selectedResort}
-        onResortClick={() => setShowResortSelector(true)}
-      />
+      {/* Header with global resort selector */}
+      <Header />
       
       {/* Offline Banner */}
       <OfflineBanner
@@ -256,7 +216,7 @@ export default function LogRun() {
           {/* GPS Detected Banner */}
           {detectedResort && selectedResort?.id !== detectedResort.id && (
             <button
-              onClick={() => handleResortSelect(detectedResort)}
+              onClick={() => setSelectedResort(detectedResort)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:bg-white/10"
               style={{
                 backgroundColor: 'rgba(0, 180, 216, 0.1)',
@@ -309,34 +269,11 @@ export default function LogRun() {
               Select a Resort
             </h3>
             <p className="text-sm mb-4" style={{ color: 'rgba(255,255,255,0.5)' }}>
-              Choose a resort to start logging runs
+              Tap the resort chip in the header to select a resort
             </p>
-            <button
-              onClick={() => setShowResortSelector(true)}
-              className="px-6 py-3 rounded-full font-semibold transition-all"
-              style={{
-                background: 'linear-gradient(135deg, #00B4D8 0%, #0077B6 100%)',
-                color: '#000',
-                fontFamily: 'Manrope, sans-serif'
-              }}
-            >
-              Browse Resorts
-            </button>
           </GlassCard>
         )}
       </div>
-
-      {/* Resort Selector Bottom Sheet */}
-      <ResortSelector
-        isOpen={showResortSelector}
-        onClose={() => setShowResortSelector(false)}
-        onSelect={handleResortSelect}
-        allResorts={allResorts}
-        recentResorts={recentResorts}
-        myResorts={myResorts}
-        selectedResort={selectedResort}
-        detectedResort={detectedResort}
-      />
 
       {/* Run Detail Sheet */}
       <RunDetailSheet

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useResort } from '@/contexts/ResortContext';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { GlassCard } from '@/components/GlassCard';
@@ -10,11 +11,10 @@ import { Search, Heart, Mountain, Check } from 'lucide-react';
 
 export default function Resorts() {
   const { profile } = useAuth();
+  const { selectedResort, allResorts } = useResort();
   const navigate = useNavigate();
   
-  // Resort and view mode state
-  const [resorts, setResorts] = useState([]);
-  const [selectedResort, setSelectedResort] = useState(null);
+  // View mode state
   const [viewMode, setViewMode] = useState('runs'); // 'runs' or 'lifts'
   
   // Runs state
@@ -33,10 +33,7 @@ export default function Resorts() {
   const [mountainFilter, setMountainFilter] = useState('');
   const [runTypeFilter, setRunTypeFilter] = useState('');
 
-  useEffect(() => {
-    loadResorts();
-  }, []);
-
+  // Load data when selected resort changes
   useEffect(() => {
     if (selectedResort) {
       loadRuns();
@@ -44,7 +41,8 @@ export default function Resorts() {
       loadBucketList();
       loadCompletedRuns();
     }
-  }, [selectedResort]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedResort?.id]);
 
   useEffect(() => {
     if (viewMode === 'runs') {
@@ -52,19 +50,8 @@ export default function Resorts() {
     } else {
       filterLifts();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runs, lifts, searchQuery, difficultyFilter, mountainFilter, runTypeFilter, viewMode]);
-
-  const loadResorts = async () => {
-    const { data } = await supabase
-      .from('ski_areas')
-      .select('*')
-      .order('name');
-    
-    if (data && data.length > 0) {
-      setResorts(data);
-      setSelectedResort(data[0]); // Auto-select first resort
-    }
-  };
 
   const loadRuns = async () => {
     if (!selectedResort) return;
@@ -208,40 +195,34 @@ export default function Resorts() {
           Resorts
         </h1>
 
-        {/* Resort Selector */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-2 text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Select Resort
-          </label>
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {resorts.map((resort) => (
-              <GlassCard
-                key={resort.id}
-                data-testid={`resort-${resort.id}`}
-                onClick={() => setSelectedResort(resort)}
-                className="flex-shrink-0 px-4 py-3 cursor-pointer transition-all"
-                style={{
-                  border: selectedResort?.id === resort.id ? '2px solid #00B4D8' : '1px solid rgba(255,255,255,0.08)',
-                  minWidth: '200px'
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <Mountain size={20} style={{ color: '#00B4D8' }} />
-                  <div>
-                    <div className="text-sm font-semibold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                      {resort.name}
-                    </div>
-                    {resort.region && (
-                      <div className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                        {resort.region}, {resort.country}
-                      </div>
-                    )}
+        {/* Resort Info Display - Now controlled by header chip */}
+        {selectedResort && (
+          <div className="mb-4">
+            <GlassCard className="px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Mountain size={24} style={{ color: '#00B4D8' }} />
+                <div>
+                  <div className="text-lg font-semibold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                    {selectedResort.name}
                   </div>
+                  {selectedResort.region && (
+                    <div className="text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                      {selectedResort.region}, {selectedResort.country}
+                    </div>
+                  )}
                 </div>
-              </GlassCard>
-            ))}
+              </div>
+            </GlassCard>
           </div>
-        </div>
+        )}
+
+        {!selectedResort && (
+          <div className="mb-4 text-center py-8">
+            <p className="text-white/60" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              Tap the resort chip in the header to select a resort
+            </p>
+          </div>
+        )}
 
         {/* View Mode Toggle */}
         <div className="mb-4">

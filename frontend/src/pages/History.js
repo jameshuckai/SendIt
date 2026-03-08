@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useResort } from '@/contexts/ResortContext';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { GlassCard } from '@/components/GlassCard';
@@ -13,6 +14,7 @@ import { toast } from 'sonner';
 
 export default function History() {
   const { profile } = useAuth();
+  const { selectedResort } = useResort();
   const [groupedLogs, setGroupedLogs] = useState({});
   const [daySummaries, setDaySummaries] = useState({});
   const [stats, setStats] = useState({ totalDays: 0, totalVertical: 0, totalRuns: 0 });
@@ -25,11 +27,18 @@ export default function History() {
   const loadLogs = useCallback(async () => {
     if (!profile) return;
     
-    const { data } = await supabase
+    // Build query - optionally filter by selected resort
+    let query = supabase
       .from('user_logs')
       .select('*, runs(name, difficulty, vertical_ft, zone), ski_areas(name)')
       .eq('user_id', profile.id)
       .order('logged_at', { ascending: false });
+    
+    if (selectedResort?.id) {
+      query = query.eq('ski_area_id', selectedResort.id);
+    }
+    
+    const { data } = await query;
     
     if (data) {
       // Group by date
@@ -49,7 +58,7 @@ export default function History() {
       });
       setGroupedLogs(grouped);
     }
-  }, [profile]);
+  }, [profile, selectedResort?.id]);
 
   const loadDaySummaries = useCallback(async () => {
     if (!profile) return;

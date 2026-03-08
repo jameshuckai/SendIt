@@ -1,20 +1,28 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Settings, LogOut, ChevronDown, Mountain } from 'lucide-react';
+import { useResort } from '@/contexts/ResortContext';
+import { Settings, LogOut, ChevronDown, MapPin } from 'lucide-react';
 import { GlassCard } from './GlassCard';
+import { ResortSelector } from './ResortSelector';
 
 // Consistent logo URL used across the app
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_blackcomb-beta/artifacts/za2ypiek_SendItLogo.png';
 
-export function Header({ 
-  showResortSelector = false, 
-  selectedResort = null, 
-  onResortClick = null 
-}) {
+export function Header() {
   const { user, profile, signOut } = useAuth();
+  const { 
+    selectedResort, 
+    setSelectedResort, 
+    allResorts, 
+    recentResorts, 
+    myResorts, 
+    detectedResort 
+  } = useResort();
+  
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
+  const [showResortSelector, setShowResortSelector] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -43,32 +51,38 @@ export function Header({
     return 'U';
   };
 
+  const handleResortSelect = (resort) => {
+    setSelectedResort(resort);
+    setShowResortSelector(false);
+  };
+
   return (
-    <header 
-      className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between"
-      style={{ 
-        backgroundColor: '#12181B',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
-      }}
-      data-testid="app-header"
-    >
-      {/* Left side - Logo and Resort Selector */}
-      <div className="flex items-center gap-3">
-        <Link 
-          to="/home" 
-          className="transition-opacity hover:opacity-85"
-          style={{ textDecoration: 'none', border: 'none' }}
-        >
-          <img 
-            src={LOGO_URL}
-            alt="Sendit Logo"
-            className="h-12 w-12 object-contain"
-          />
-        </Link>
-        
-        {showResortSelector && onResortClick ? (
+    <>
+      <header 
+        className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between"
+        style={{ 
+          backgroundColor: '#12181B',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+        }}
+        data-testid="app-header"
+      >
+        {/* Left side - Logo and Resort Chip */}
+        <div className="flex items-center gap-3">
+          <Link 
+            to="/home" 
+            className="transition-opacity hover:opacity-85"
+            style={{ textDecoration: 'none', border: 'none' }}
+          >
+            <img 
+              src={LOGO_URL}
+              alt="Sendit Logo"
+              className="h-12 w-12 object-contain"
+            />
+          </Link>
+          
+          {/* Global Resort Chip - Always visible */}
           <button
-            onClick={onResortClick}
+            onClick={() => setShowResortSelector(true)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all hover:bg-white/10"
             style={{ 
               backgroundColor: 'rgba(0, 180, 216, 0.1)',
@@ -76,7 +90,7 @@ export function Header({
             }}
             data-testid="header-resort-selector"
           >
-            <Mountain size={16} style={{ color: '#00B4D8' }} />
+            <MapPin size={16} style={{ color: '#00B4D8' }} />
             <span 
               className="text-sm font-medium max-w-[120px] truncate"
               style={{ color: '#00B4D8', fontFamily: 'Manrope, sans-serif' }}
@@ -85,16 +99,7 @@ export function Header({
             </span>
             <ChevronDown size={14} style={{ color: '#00B4D8' }} />
           </button>
-        ) : (
-          <Link 
-            to="/home"
-            className="text-xl font-bold text-white transition-opacity hover:opacity-85"
-            style={{ fontFamily: 'Manrope, sans-serif', textDecoration: 'none' }}
-          >
-            Sendit
-          </Link>
-        )}
-      </div>
+        </div>
 
       {/* User Profile Menu */}
       <div className="relative" ref={menuRef}>
@@ -191,5 +196,18 @@ export function Header({
         )}
       </div>
     </header>
+
+    {/* Resort Selector Bottom Sheet */}
+    <ResortSelector
+      isOpen={showResortSelector}
+      onClose={() => setShowResortSelector(false)}
+      onSelect={handleResortSelect}
+      allResorts={allResorts}
+      recentResorts={recentResorts}
+      myResorts={myResorts}
+      selectedResort={selectedResort}
+      detectedResort={detectedResort}
+    />
+    </>
   );
 }
