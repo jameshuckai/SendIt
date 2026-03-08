@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { GlassCard } from './GlassCard';
 import { DifficultyBadge } from './DifficultyBadge';
 import { Check, Target, ChevronDown, ChevronRight, TrendingUp, RotateCcw } from 'lucide-react';
@@ -34,13 +34,21 @@ export function RunChecklist({
   region,
   isLoading
 }) {
-  // Start with all zones collapsed
   const [collapsedZones, setCollapsedZones] = useState(new Set());
+  const initializedRef = useRef(false);
+  const prevZonesRef = useRef('');
   
-  // Collapse all zones when groupedRuns changes (e.g., resort change)
+  // Collapse all zones on initial load or when zones change (e.g., resort change)
   useEffect(() => {
     const zones = Object.keys(groupedRuns);
-    setCollapsedZones(new Set(zones));
+    const zonesKey = zones.sort().join(',');
+    
+    // Only reset if zones have actually changed (different resort) or first load
+    if (!initializedRef.current || zonesKey !== prevZonesRef.current) {
+      setCollapsedZones(new Set(zones));
+      prevZonesRef.current = zonesKey;
+      initializedRef.current = true;
+    }
   }, [groupedRuns]);
 
   const toggleZone = (zone) => {
