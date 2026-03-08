@@ -13,21 +13,39 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Session error:', error);
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+      
       if (session?.user) {
+        setUser(session.user);
         loadProfile(session.user.id);
       } else {
+        setUser(null);
+        setProfile(null);
         setLoading(false);
       }
+    }).catch(err => {
+      console.error('Failed to get session:', err);
+      setUser(null);
+      setProfile(null);
+      setLoading(false);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      console.log('Auth state changed:', _event, session?.user?.email);
+      
       if (session?.user) {
+        setUser(session.user);
         loadProfile(session.user.id);
       } else {
+        setUser(null);
         setProfile(null);
         setLoading(false);
       }
@@ -99,8 +117,21 @@ export function AuthProvider({ children }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setProfile(null);
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setProfile(null);
+      // Clear any cached data
+      localStorage.removeItem('sendit_last_resort_id');
+      // Force redirect to login
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Sign out error:', error);
+      // Force clear anyway
+      setUser(null);
+      setProfile(null);
+      window.location.href = '/login';
+    }
   };
 
   const updateProfile = async (updates) => {
