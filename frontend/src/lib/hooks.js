@@ -35,6 +35,7 @@ export function useResortDetection(userId) {
   const resortsLoadedRef = useRef(false);
   const userResortsLoadedRef = useRef(false);
   const initializedRef = useRef(false);
+  const gpsAttemptedRef = useRef(false);
 
   // Load all resorts - ONCE
   const loadResorts = useCallback(async () => {
@@ -104,8 +105,12 @@ export function useResortDetection(userId) {
     }
   }, [userId]);
 
-  // Detect resort via GPS
+  // Detect resort via GPS - silent, non-blocking, NEVER retries
   const detectResort = useCallback(async (resortsToSearch) => {
+    // Prevent multiple GPS attempts
+    if (gpsAttemptedRef.current) return null;
+    gpsAttemptedRef.current = true;
+    
     setIsDetecting(true);
     try {
       const position = await getCurrentPosition();
@@ -116,16 +121,20 @@ export function useResortDetection(userId) {
         lng: position.lng
       });
 
-      if (data && data.length > 0 && data[0].distance_km < 50) {
-        // Found a resort within 50km
-        const detected = resortsToSearch.find(r => r.id === data[0].id);
-        if (detected) {
-          setDetectedResort(detected);
-          return detected;
-        }
+      // Silent fallback on any error or null result - do NOT retry
+      if (error || !data) {
+        return null;
+      }
+      
+      // data is a UUID, find the resort in our list
+      const detected = resortsToSearch.find(r => r.id === data);
+      if (detected) {
+        setDetectedResort(detected);
+        return detected;
       }
     } catch (error) {
-      console.log('GPS detection failed:', error.message);
+      // Silent fail - GPS not available or denied
+      console.log('GPS detection skipped:', error.message);
     } finally {
       setIsDetecting(false);
     }

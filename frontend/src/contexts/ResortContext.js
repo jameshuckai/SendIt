@@ -26,6 +26,7 @@ export function ResortProvider({ children }) {
   const resortsLoadedRef = useRef(false);
   const userResortsLoadedRef = useRef(false);
   const initializingRef = useRef(false);
+  const gpsDetectionAttemptedRef = useRef(false);
 
   // Load all resorts from Supabase - ONLY ONCE
   const loadResorts = useCallback(async (force = false) => {
@@ -106,35 +107,61 @@ export function ResortProvider({ children }) {
     }
   }, [userId]);
 
-  // Detect resort via GPS (silent, non-blocking)
+  // Detect resort by GPS coordinates - silent, non-blocking, NEVER retries
+  const detectResortByGPS = useCallback(async (lat, lng, resorts) => {
+    try {
+      const { data, error } = await supabase.rpc('find_resort_by_location', { 
+        lat, 
+        lng 
+      });
+
+      // Silent fallback on any error or null result - do NOT retry
+      if (error || !data) {
+        return null;
+      }
+      
+      // data is a UUID, find the resort in our list
+      const detected = resorts.find(r => r.id === data);
+      return detected || null;
+    } catch {
+      // Never throw, never retry
+      return null;
+    }
+  }, []);
+
+  // GPS detection - runs ONCE on mount, never in a loop
   const detectResort = useCallback(async (resorts) => {
+    // Prevent multiple GPS detection attempts
+    if (gpsDetectionAttemptedRef.current) return null;
+    gpsDetectionAttemptedRef.current = true;
+    
     const resortsToSearch = resorts || allResorts;
     if (resortsToSearch.length === 0) return null;
 
     setIsDetecting(true);
+    
     try {
       const position = await getCurrentPosition();
-
-      const { data, error } = await supabase.rpc('find_resort_by_location', {
-        lat: position.lat,
-        lng: position.lng
-      });
-
-      if (!error && data && data.length > 0 && data[0].distance_km < 50) {
-        const detected = resortsToSearch.find(r => r.id === data[0].id);
-        if (detected) {
-          setDetectedResort(detected);
-          return detected;
-        }
+      const detected = await detectResortByGPS(
+        position.lat, 
+        position.lng, 
+        resortsToSearch
+      );
+      
+      if (detected) {
+        setDetectedResort(detected);
+        return detected;
       }
     } catch (error) {
-      console.log('GPS detection failed (non-blocking):', error.message);
+      // Silent fail - GPS not available or denied
+      console.log('GPS detection skipped:', error.message);
     } finally {
       setIsDetecting(false);
     }
+    
     return null;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [detectResortByGPS]);
 
   // Set selected resort with persistence to localStorage AND Supabase
   const setSelectedResort = useCallback(async (resort) => {
