@@ -15,8 +15,21 @@ import { MapPin, Mountain } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function LogRun() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const isOnline = useOnlineStatus();
+  
+  // Use user.id as the primary identifier (profile.id should match)
+  const userId = user?.id || profile?.id;
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('LogRun auth state:', { 
+      userId, 
+      profileId: profile?.id, 
+      userAuthId: user?.id,
+      hasProfile: !!profile 
+    });
+  }, [userId, profile, user]);
   
   // Resort detection
   const {
@@ -27,7 +40,7 @@ export default function LogRun() {
     allResorts,
     recentResorts,
     myResorts
-  } = useResortDetection(profile?.id);
+  } = useResortDetection(userId);
 
   // Run checklist
   const {
@@ -43,10 +56,10 @@ export default function LogRun() {
     getGroupedRuns,
     getTodayCount,
     refresh
-  } = useRunChecklist(profile?.id, selectedResort?.id);
+  } = useRunChecklist(userId, selectedResort?.id);
 
   // Sync queue
-  const { pendingCount, isSyncing, syncNow } = useSyncQueue(profile?.id);
+  const { pendingCount, isSyncing, syncNow } = useSyncQueue(userId);
 
   // UI state
   const [showResortSelector, setShowResortSelector] = useState(false);
@@ -72,7 +85,22 @@ export default function LogRun() {
   // Handle run log
   const handleLogRun = useCallback(async (runId) => {
     const run = runs.find(r => r.id === runId);
-    console.log('handleLogRun called for:', run?.name, runId);
+    console.log('handleLogRun called:', { 
+      runName: run?.name, 
+      runId, 
+      userId,
+      resortId: selectedResort?.id 
+    });
+    
+    if (!userId) {
+      toast.error('Please log in to log runs');
+      return;
+    }
+    
+    if (!selectedResort?.id) {
+      toast.error('Please select a resort first');
+      return;
+    }
     
     const result = await logRun(runId);
     console.log('logRun result:', result);
@@ -113,7 +141,7 @@ export default function LogRun() {
         },
       });
     }
-  }, [runs, logRun]);
+  }, [runs, logRun, userId, selectedResort?.id]);
 
   // Handle log last run again
   const handleLogLastAgain = useCallback(async () => {
