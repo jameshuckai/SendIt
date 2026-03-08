@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from './supabase';
+import { supabase, getSupabaseErrorMessage } from './supabase';
 import { offlineStorage, checkOnlineStatus, getCurrentPosition, generateSessionId, isToday, isThisSeason } from './offline';
 
 // Hook for online status
@@ -311,7 +311,7 @@ export function useRunChecklist(userId, resortId) {
     if (isOnline) {
       try {
         // Use proper Supabase { data, error } destructuring
-        // NEVER call .json() or .text() on Supabase responses
+        // IMPORTANT: Never call .json() or .text() on Supabase responses
         const { data, error } = await supabase
           .from('user_logs')
           .insert({
@@ -326,10 +326,8 @@ export function useRunChecklist(userId, resortId) {
         
         if (error) {
           console.error('Supabase error logging run:', error);
-          // Extract error message safely
-          const errorMessage = typeof error === 'object' && error !== null
-            ? (error.message || error.details || JSON.stringify(error))
-            : String(error);
+          // Use safe error message extractor
+          const errorMessage = getSupabaseErrorMessage(error);
           return { success: false, error: errorMessage };
         }
         
@@ -339,10 +337,10 @@ export function useRunChecklist(userId, resortId) {
         return { success: true };
       } catch (err) {
         console.error('Error logging run:', err);
-        // Safely extract error message without calling .text() or .json()
+        // Safely extract error message
         const errorMessage = err instanceof Error 
           ? err.message 
-          : (typeof err === 'string' ? err : 'Unknown error occurred');
+          : getSupabaseErrorMessage(err);
         return { success: false, error: errorMessage };
       }
     } else {
@@ -463,7 +461,7 @@ export function useSyncQueue(userId) {
 
       if (error) {
         console.error('Sync error:', error);
-        return { synced: 0, error: error.message || 'Sync failed' };
+        return { synced: 0, error: getSupabaseErrorMessage(error) };
       }
       
       await offlineStorage.clearSyncQueue();
@@ -618,10 +616,7 @@ export function useDaySummary(userId, date = new Date()) {
 
       if (error) {
         console.error('Error saving summary:', error);
-        const errorMessage = typeof error === 'object' && error !== null
-          ? (error.message || error.details || JSON.stringify(error))
-          : String(error);
-        return { success: false, error: errorMessage };
+        return { success: false, error: getSupabaseErrorMessage(error) };
       }
       
       setSummary(data);
@@ -644,7 +639,7 @@ export function useDaySummary(userId, date = new Date()) {
 
       if (error) {
         console.error('Error deleting log:', error);
-        return { success: false, error: error.message || 'Delete failed' };
+        return { success: false, error: getSupabaseErrorMessage(error) };
       }
       
       setLogs(prev => prev.filter(l => l.id !== logId));
