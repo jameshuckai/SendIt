@@ -17,28 +17,17 @@ export default function Signup() {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      const result = await signUp(email, password);
-      
-      console.log('Signup result:', result);
-      
-      if (result.error) {
-        const errorMessage = result.error?.message || 'Signup failed. Please try again.';
-        toast.error(errorMessage);
-        setLoading(false);
-      } else if (result.data?.user) {
-        toast.success('Account created! Please check your email to confirm.');
-        navigate('/login');
-      } else {
-        toast.success('Account created! Please check your email to confirm.');
-        navigate('/login');
-      }
-    } catch (err) {
-      console.error('Signup error:', err);
-      toast.error('An unexpected error occurred. Please try again.');
-    } finally {
+    const { data, error } = await signUp(email, password);
+    
+    if (error) {
+      toast.error(error.message || 'Signup failed');
       setLoading(false);
+      return;
     }
+    
+    // Success
+    toast.success('Account created! Please check your email to confirm.');
+    navigate('/login');
   };
 
   return (
