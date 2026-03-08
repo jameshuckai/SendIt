@@ -18,13 +18,17 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const { data, error } = await signUp(email, password);
+      const result = await signUp(email, password);
       
-      if (error) {
-        // Handle error safely without reading response body twice
-        const errorMessage = typeof error === 'string' ? error : error.message || 'Signup failed';
+      console.log('Signup result:', result);
+      
+      if (result.error) {
+        const errorMessage = result.error?.message || 'Signup failed. Please try again.';
         toast.error(errorMessage);
         setLoading(false);
+      } else if (result.data?.user) {
+        toast.success('Account created! Please check your email to confirm.');
+        navigate('/login');
       } else {
         toast.success('Account created! Please check your email to confirm.');
         navigate('/login');
@@ -32,6 +36,7 @@ export default function Signup() {
     } catch (err) {
       console.error('Signup error:', err);
       toast.error('An unexpected error occurred. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
