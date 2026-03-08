@@ -7,6 +7,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { GlassCard } from '@/components/GlassCard';
 import { SnowStake } from '@/components/SnowStake';
 import { DifficultyBadge } from '@/components/DifficultyBadge';
+import { TrailMap } from '@/components/TrailMap';
 import { supabase } from '@/lib/supabase';
 import { format } from 'date-fns';
 import { Heart, Mountain, TrendingUp, MapPin, Snowflake, Plus } from 'lucide-react';
@@ -385,6 +386,22 @@ export default function Home() {
               </GlassCard>
             </div>
           </div>
+
+          {/* Trail Map Section */}
+          {selectedResort && (
+            <div className="px-6 py-4">
+              <h2 className="text-lg font-bold text-white mb-3" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                Trail Map
+              </h2>
+              <TrailMap 
+                resort={selectedResort}
+                height="h-[45vh]"
+                mobileHeight="h-[40vh]"
+                labelText={selectedResort.name}
+                focusZone={recentActivity[0]?.runs?.zone || null}
+              />
+            </div>
+          )}
         </>
       )}
 

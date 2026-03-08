@@ -6,6 +6,7 @@ import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { GlassCard } from '@/components/GlassCard';
 import { DifficultyBadge } from '@/components/DifficultyBadge';
+import { TrailMap } from '@/components/TrailMap';
 import { supabase } from '@/lib/supabase';
 import { Search, Heart, Mountain, Check } from 'lucide-react';
 
@@ -248,6 +249,19 @@ export default function Resorts() {
                 </div>
               </div>
             </GlassCard>
+          </div>
+        )}
+
+        {/* Trail Map - Large interactive map */}
+        {selectedResort && (
+          <div className="mb-4">
+            <TrailMap 
+              resort={selectedResort}
+              height="h-[50vh]"
+              mobileHeight="h-[45vh]"
+              labelText={selectedResort.name}
+              showLabel={true}
+            />
           </div>
         )}
 

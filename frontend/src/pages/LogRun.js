@@ -7,7 +7,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { RunChecklist } from '@/components/RunChecklist';
 import { RunDetailSheet } from '@/components/RunDetailSheet';
 import { OfflineBanner } from '@/components/OfflineBanner';
-import { ResortMapImage } from '@/components/ResortMapImage';
+import { TrailMap } from '@/components/TrailMap';
 import { supabase } from '@/lib/supabase';
 import { useRunChecklist, useSyncQueue, useOnlineStatus } from '@/lib/hooks';
 import { MapPin, Mountain } from 'lucide-react';
@@ -231,9 +231,18 @@ export default function LogRun() {
           )}
         </div>
 
-        {/* Static Resort Map */}
+        {/* Scoutable Trail Map - Scout before selecting a run */}
         {selectedResort && (
-          <ResortMapImage resort={selectedResort} className="mb-6" />
+          <div className="mb-6">
+            <TrailMap 
+              resort={selectedResort}
+              height="h-[45vh]"
+              mobileHeight="h-[40vh]"
+              labelText="Scout the Mountain"
+              scoutableMode={true}
+              showLabel={true}
+            />
+          </div>
         )}
 
         {/* Run count */}
