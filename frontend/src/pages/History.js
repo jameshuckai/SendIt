@@ -6,6 +6,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { GlassCard } from '@/components/GlassCard';
 import { DifficultyBadge } from '@/components/DifficultyBadge';
 import { DaySummary } from '@/components/DaySummary';
+import { TrailMap } from '@/components/TrailMap';
 import { supabase } from '@/lib/supabase';
 import { useDaySummary } from '@/lib/hooks';
 import { format, parseISO, isToday as checkIsToday } from 'date-fns';
@@ -210,6 +211,19 @@ export default function History() {
             </div>
           </div>
         </GlassCard>
+
+        {/* Trail Map */}
+        {selectedResort && (
+          <div className="mb-6">
+            <TrailMap 
+              resort={selectedResort}
+              minHeight={250}
+              maxHeight={400}
+              labelText={selectedResort.name}
+              showLabel={true}
+            />
+          </div>
+        )}
 
         {/* Day Cards */}
         {visibleDates.length === 0 ? (

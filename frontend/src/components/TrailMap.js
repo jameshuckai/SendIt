@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { ZoomIn, ZoomOut, Maximize2, X, RotateCcw, Map } from 'lucide-react';
 import { GlassCard } from './GlassCard';
@@ -13,33 +13,41 @@ const RESORT_MAPS = {
 export function TrailMap({ 
   resort, 
   className = '', 
-  height = 'h-[45vh]',
-  mobileHeight = 'h-[40vh]',
+  minHeight = 300,
+  maxHeight = 500,
   showLabel = true,
   labelText = 'Trail Map',
-  focusZone = null, // e.g., "Peak Zone" - for highlighting last run area
-  onZoneClick = null,
-  scoutableMode = false // For LogRun - allows exploration before selection
+  focusZone = null,
+  scoutableMode = false
 }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const [currentScale, setCurrentScale] = useState(1);
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
   const transformRef = useRef(null);
+  const containerRef = useRef(null);
 
   // Get map URL based on resort name or map_url field
   const getMapUrl = useCallback(() => {
-    // First check if resort has a custom map_url in the database
     if (resort?.map_url) return resort.map_url;
-    
     if (!resort?.name) return RESORT_MAPS.default;
-    
     const name = resort.name.toLowerCase();
     if (name.includes('whistler') || name.includes('blackcomb')) {
       return RESORT_MAPS.whistler;
     }
-    
     return RESORT_MAPS.default;
   }, [resort]);
+
+  // Handle image load to get natural dimensions
+  const handleImageLoad = useCallback((e) => {
+    const img = e.target;
+    setImageDimensions({
+      width: img.naturalWidth,
+      height: img.naturalHeight
+    });
+    setImageLoaded(true);
+  }, []);
 
   const handleImageError = () => {
     setImageError(true);
@@ -50,28 +58,45 @@ export function TrailMap({
   }, []);
 
   // Zoom control handlers
-  const handleZoomIn = useCallback(() => {
+  const handleZoomIn = useCallback((e) => {
+    e.stopPropagation();
+    e.preventDefault();
     if (transformRef.current) {
       transformRef.current.zoomIn(0.5);
     }
   }, []);
 
-  const handleZoomOut = useCallback(() => {
+  const handleZoomOut = useCallback((e) => {
+    e.stopPropagation();
+    e.preventDefault();
     if (transformRef.current) {
       transformRef.current.zoomOut(0.5);
     }
   }, []);
 
-  const handleReset = useCallback(() => {
+  const handleReset = useCallback((e) => {
+    e.stopPropagation();
+    e.preventDefault();
     if (transformRef.current) {
       transformRef.current.resetTransform();
     }
   }, []);
 
+  // Calculate container height based on image aspect ratio
+  const getContainerHeight = useCallback(() => {
+    if (!imageLoaded || imageDimensions.width === 0) return minHeight;
+    
+    const containerWidth = containerRef.current?.offsetWidth || 390;
+    const aspectRatio = imageDimensions.height / imageDimensions.width;
+    const calculatedHeight = containerWidth * aspectRatio;
+    
+    return Math.min(Math.max(calculatedHeight, minHeight), maxHeight);
+  }, [imageLoaded, imageDimensions, minHeight, maxHeight]);
+
   // Zoom Controls Component
   const ZoomControls = ({ fullscreen = false }) => (
     <div 
-      className="absolute bottom-3 right-3 flex items-center gap-1 p-1.5 rounded-xl z-10"
+      className="absolute bottom-3 right-3 flex items-center gap-1 p-1.5 rounded-xl z-20"
       style={{ 
         backgroundColor: 'rgba(18, 24, 27, 0.95)',
         backdropFilter: 'blur(8px)',
@@ -80,10 +105,12 @@ export function TrailMap({
     >
       <button
         onClick={handleZoomOut}
+        onTouchEnd={handleZoomOut}
         className="p-2.5 rounded-lg transition-all active:scale-95 hover:bg-white/10"
         disabled={currentScale <= 1}
         style={{ opacity: currentScale <= 1 ? 0.4 : 1 }}
         aria-label="Zoom out"
+        type="button"
       >
         <ZoomOut size={20} style={{ color: '#00B4D8' }} />
       </button>
@@ -101,10 +128,12 @@ export function TrailMap({
       
       <button
         onClick={handleZoomIn}
+        onTouchEnd={handleZoomIn}
         className="p-2.5 rounded-lg transition-all active:scale-95 hover:bg-white/10"
         disabled={currentScale >= 4}
         style={{ opacity: currentScale >= 4 ? 0.4 : 1 }}
         aria-label="Zoom in"
+        type="button"
       >
         <ZoomIn size={20} style={{ color: '#00B4D8' }} />
       </button>
@@ -112,9 +141,11 @@ export function TrailMap({
       {currentScale > 1 && (
         <button
           onClick={handleReset}
+          onTouchEnd={handleReset}
           className="p-2.5 rounded-lg transition-all active:scale-95 hover:bg-white/10 ml-1"
           style={{ borderLeft: '1px solid rgba(255,255,255,0.1)' }}
           aria-label="Reset view"
+          type="button"
         >
           <RotateCcw size={18} style={{ color: '#00B4D8' }} />
         </button>
@@ -122,10 +153,12 @@ export function TrailMap({
       
       {!fullscreen && (
         <button
-          onClick={() => setIsFullscreen(true)}
+          onClick={(e) => { e.stopPropagation(); setIsFullscreen(true); }}
+          onTouchEnd={(e) => { e.stopPropagation(); setIsFullscreen(true); }}
           className="p-2.5 rounded-lg transition-all active:scale-95 hover:bg-white/10 ml-1"
           style={{ borderLeft: '1px solid rgba(255,255,255,0.1)' }}
           aria-label="Fullscreen"
+          type="button"
         >
           <Maximize2 size={18} style={{ color: '#00B4D8' }} />
         </button>
@@ -137,7 +170,7 @@ export function TrailMap({
   const MapLabel = () => (
     showLabel && (
       <div 
-        className="absolute top-3 left-3 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 z-10"
+        className="absolute top-3 left-3 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 z-20"
         style={{ 
           backgroundColor: 'rgba(18, 24, 27, 0.95)',
           backdropFilter: 'blur(8px)',
@@ -152,11 +185,11 @@ export function TrailMap({
     )
   );
 
-  // Focus Zone Indicator (for Home page - last run zone)
+  // Focus Zone Indicator
   const FocusZoneIndicator = () => (
     focusZone && (
       <div 
-        className="absolute top-3 right-3 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 z-10"
+        className="absolute top-3 right-3 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 z-20"
         style={{ 
           backgroundColor: 'rgba(0, 180, 216, 0.2)',
           backdropFilter: 'blur(8px)',
@@ -171,11 +204,11 @@ export function TrailMap({
     )
   );
 
-  // Scoutable Mode Hint (for LogRun page)
+  // Scoutable Mode Hint
   const ScoutHint = () => (
     scoutableMode && currentScale === 1 && (
       <div 
-        className="absolute bottom-16 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full text-xs font-medium z-10 animate-pulse"
+        className="absolute bottom-16 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full text-xs font-medium z-20 animate-pulse"
         style={{ 
           backgroundColor: 'rgba(18, 24, 27, 0.95)',
           backdropFilter: 'blur(8px)',
@@ -191,7 +224,10 @@ export function TrailMap({
 
   // Error Placeholder
   const ErrorPlaceholder = () => (
-    <div className="w-full h-full flex flex-col items-center justify-center p-6">
+    <div 
+      className="w-full flex flex-col items-center justify-center p-6"
+      style={{ minHeight: minHeight }}
+    >
       <Map size={48} style={{ color: 'rgba(255,255,255,0.2)' }} className="mb-4" />
       <p className="text-sm text-center font-medium" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Manrope, sans-serif' }}>
         Trail map not available
@@ -202,69 +238,157 @@ export function TrailMap({
     </div>
   );
 
-  // Main Map Content
-  const MapContent = ({ fullscreen = false }) => (
-    <div 
-      className={`relative overflow-hidden ${fullscreen ? 'w-full h-full' : `${mobileHeight} md:${height}`}`}
-      style={{ 
-        backgroundColor: '#12181B',
-        touchAction: 'none' // Prevents browser gestures interfering
-      }}
-    >
-      {imageError ? (
-        <ErrorPlaceholder />
-      ) : (
-        <TransformWrapper
-          ref={transformRef}
-          initialScale={1}
-          minScale={1}
-          maxScale={4}
-          centerOnInit={true}
-          wheel={{ step: 0.2 }}
-          pinch={{ step: 5 }}
-          doubleClick={{ mode: 'zoomIn', step: 0.7 }}
-          onTransformed={handleTransform}
-          limitToBounds={true}
-          panning={{ 
-            velocityDisabled: false,
-            lockAxisX: false,
-            lockAxisY: false
-          }}
-        >
-          <TransformComponent
-            wrapperStyle={{
-              width: '100%',
-              height: '100%'
+  // Main Map Content - Non-fullscreen version
+  const MapContent = () => {
+    const containerHeight = getContainerHeight();
+    
+    return (
+      <div 
+        ref={containerRef}
+        className="relative overflow-hidden w-full"
+        style={{ 
+          backgroundColor: '#12181B',
+          height: imageLoaded ? containerHeight : minHeight,
+          minHeight: minHeight,
+          maxHeight: maxHeight
+        }}
+      >
+        {imageError ? (
+          <ErrorPlaceholder />
+        ) : (
+          <TransformWrapper
+            ref={transformRef}
+            initialScale={1}
+            minScale={1}
+            maxScale={4}
+            centerOnInit={true}
+            wheel={{ 
+              step: 0.1,
+              smoothStep: 0.004
             }}
-            contentStyle={{
-              width: '100%',
-              height: '100%'
+            pinch={{ 
+              step: 5 
+            }}
+            doubleClick={{ 
+              mode: 'zoomIn', 
+              step: 0.5 
+            }}
+            onTransformed={handleTransform}
+            limitToBounds={false}
+            panning={{ 
+              disabled: false,
+              velocityDisabled: false
             }}
           >
-            <img
-              src={getMapUrl()}
-              alt={`${resort?.name || 'Resort'} Trail Map`}
-              className="w-full h-full object-cover select-none"
-              draggable={false}
-              onError={handleImageError}
-              style={{ 
-                minHeight: fullscreen ? '100%' : undefined,
-                objectPosition: 'center'
-              }}
-            />
-          </TransformComponent>
-        </TransformWrapper>
-      )}
+            {({ zoomIn, zoomOut, resetTransform }) => (
+              <>
+                <TransformComponent
+                  wrapperStyle={{
+                    width: '100%',
+                    height: '100%',
+                    overflow: 'hidden'
+                  }}
+                  contentStyle={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <img
+                    src={getMapUrl()}
+                    alt={`${resort?.name || 'Resort'} Trail Map`}
+                    className="select-none"
+                    draggable={false}
+                    onLoad={handleImageLoad}
+                    onError={handleImageError}
+                    style={{ 
+                      width: '100%',
+                      height: 'auto',
+                      objectFit: 'contain',
+                      maxHeight: '100%'
+                    }}
+                  />
+                </TransformComponent>
+              </>
+            )}
+          </TransformWrapper>
+        )}
 
-      {/* Overlays */}
-      {!imageError && (
-        <>
-          <MapLabel />
-          <FocusZoneIndicator />
-          <ScoutHint />
-          <ZoomControls fullscreen={fullscreen} />
-        </>
-      )}
+        {/* Overlays */}
+        {!imageError && imageLoaded && (
+          <>
+            <MapLabel />
+            <FocusZoneIndicator />
+            <ScoutHint />
+            <ZoomControls />
+          </>
+        )}
+        
+        {/* Loading state */}
+        {!imageLoaded && !imageError && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-[#00B4D8] border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Fullscreen Map Content
+  const FullscreenMapContent = () => (
+    <div 
+      className="relative w-full h-full"
+      style={{ backgroundColor: '#000' }}
+    >
+      <TransformWrapper
+        initialScale={1}
+        minScale={0.5}
+        maxScale={6}
+        centerOnInit={true}
+        wheel={{ 
+          step: 0.1,
+          smoothStep: 0.004
+        }}
+        pinch={{ step: 5 }}
+        doubleClick={{ mode: 'zoomIn', step: 0.5 }}
+        onTransformed={handleTransform}
+        limitToBounds={false}
+        panning={{ 
+          disabled: false,
+          velocityDisabled: false
+        }}
+      >
+        <TransformComponent
+          wrapperStyle={{
+            width: '100%',
+            height: '100%'
+          }}
+          contentStyle={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <img
+            src={getMapUrl()}
+            alt={`${resort?.name || 'Resort'} Trail Map`}
+            className="select-none"
+            draggable={false}
+            style={{ 
+              maxWidth: '100%',
+              maxHeight: '100%',
+              objectFit: 'contain'
+            }}
+          />
+        </TransformComponent>
+      </TransformWrapper>
+
+      {/* Fullscreen controls */}
+      <ZoomControls fullscreen />
     </div>
   );
 
@@ -280,28 +404,29 @@ export function TrailMap({
       {/* Fullscreen Modal */}
       {isFullscreen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-50"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.98)' }}
         >
           {/* Close Button */}
           <button
             onClick={() => {
               setIsFullscreen(false);
-              handleReset();
+              setCurrentScale(1);
             }}
-            className="absolute top-4 right-4 p-3 rounded-full transition-all active:scale-95 hover:bg-white/20 z-20"
+            className="absolute top-4 right-4 p-3 rounded-full transition-all active:scale-95 hover:bg-white/20 z-30"
             style={{ 
               backgroundColor: 'rgba(255,255,255,0.1)',
               border: '1px solid rgba(255,255,255,0.2)'
             }}
             aria-label="Close fullscreen"
+            type="button"
           >
             <X size={24} style={{ color: 'white' }} />
           </button>
           
           {/* Resort Name in Fullscreen */}
           <div 
-            className="absolute top-4 left-4 px-4 py-2 rounded-full z-20"
+            className="absolute top-4 left-4 px-4 py-2 rounded-full z-30"
             style={{ 
               backgroundColor: 'rgba(18, 24, 27, 0.95)',
               border: '1px solid rgba(255,255,255,0.1)'
@@ -316,9 +441,7 @@ export function TrailMap({
           </div>
           
           {/* Fullscreen Map */}
-          <div className="w-full h-full">
-            <MapContent fullscreen />
-          </div>
+          <FullscreenMapContent />
         </div>
       )}
     </>

@@ -236,8 +236,8 @@ export default function LogRun() {
           <div className="mb-6">
             <TrailMap 
               resort={selectedResort}
-              height="h-[45vh]"
-              mobileHeight="h-[40vh]"
+              minHeight={280}
+              maxHeight={450}
               labelText="Scout the Mountain"
               scoutableMode={true}
               showLabel={true}

@@ -257,8 +257,8 @@ export default function Resorts() {
           <div className="mb-4">
             <TrailMap 
               resort={selectedResort}
-              height="h-[50vh]"
-              mobileHeight="h-[45vh]"
+              minHeight={300}
+              maxHeight={500}
               labelText={selectedResort.name}
               showLabel={true}
             />

@@ -395,8 +395,8 @@ export default function Home() {
               </h2>
               <TrailMap 
                 resort={selectedResort}
-                height="h-[45vh]"
-                mobileHeight="h-[40vh]"
+                minHeight={280}
+                maxHeight={450}
                 labelText={selectedResort.name}
                 focusZone={recentActivity[0]?.runs?.zone || null}
               />
