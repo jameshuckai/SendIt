@@ -75,7 +75,7 @@ export function Header() {
           >
             <img 
               src={LOGO_URL}
-              alt="Sendit Logo"
+              alt="PeakLap Logo"
               className="h-12 w-12 object-contain"
             />
           </Link>

@@ -53,21 +53,21 @@ export default function Signup() {
           >
             <img 
               src={LOGO_URL}
-              alt="Sendit Logo" 
+              alt="PeakLap Logo" 
               className="h-24 w-24 object-contain"
             />
             <p className="text-center text-xl font-bold mt-2" style={{ color: 'white', fontFamily: 'Manrope, sans-serif' }}>
-              Sendit
+              PeakLap
             </p>
           </Link>
         </div>
 
         <GlassCard className="p-8">
           <h1 className="text-3xl font-bold mb-2 text-white text-center" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Join Sendit
+            Join PeakLap
           </h1>
           <p className="text-sm mb-6 text-center" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Start tracking your mountain adventures
+            Every lap. Every peak. Every season.
           </p>
 
           {/* Persistent Message Banner */}

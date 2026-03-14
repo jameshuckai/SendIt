@@ -19,7 +19,7 @@ function LoadingScreen() {
     <div className="min-h-screen flex flex-col items-center justify-center" style={{ backgroundColor: '#12181B' }}>
       <img 
         src="https://customer-assets.emergentagent.com/job_blackcomb-beta/artifacts/za2ypiek_SendItLogo.png"
-        alt="Sendit Logo"
+        alt="PeakLap Logo"
         className="h-16 w-16 mb-4 animate-pulse"
       />
       <div className="text-white text-sm" style={{ fontFamily: 'Manrope, sans-serif', color: 'rgba(255,255,255,0.6)' }}>

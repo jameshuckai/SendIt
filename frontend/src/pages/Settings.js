@@ -4,7 +4,6 @@ import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { GlassCard } from '@/components/GlassCard';
 import { SnowStake } from '@/components/SnowStake';
-import { supabase } from '@/lib/supabase';
 import { Minus, Plus, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -17,8 +16,6 @@ export default function Settings() {
   const [goalVertical, setGoalVertical] = useState(profile?.season_goal_vertical_ft || 0);
   const [region, setRegion] = useState(profile?.difficulty_region || 'NA');
   const [saving, setSaving] = useState(false);
-  const [showWaitlistModal, setShowWaitlistModal] = useState(false);
-  const [waitlistEmail, setWaitlistEmail] = useState('');
 
   useEffect(() => {
     if (profile) {
@@ -50,34 +47,6 @@ export default function Settings() {
       toast.error(`Failed to update settings: ${error.message || error}`);
     } else {
       toast.success('Settings saved!');
-    }
-  };
-
-  const handleWaitlistSubmit = async (e) => {
-    e.preventDefault();
-    
-    try {
-      // Use proper { data, error } destructuring
-      // NEVER call .json() or .text() on Supabase responses
-      const { error } = await supabase
-        .from('waitlist')
-        .insert({ email: waitlistEmail });
-
-      if (error) {
-        if (error.code === '23505') {
-          toast.success('You\'re already on the waitlist!');
-        } else {
-          console.error('Error joining waitlist:', error);
-          toast.error('Failed to join waitlist');
-        }
-      } else {
-        toast.success('Added to waitlist! We\'ll notify you soon.');
-        setShowWaitlistModal(false);
-        setWaitlistEmail('');
-      }
-    } catch (err) {
-      console.error('Error joining waitlist:', err);
-      toast.error('Failed to join waitlist');
     }
   };
 
@@ -253,36 +222,6 @@ export default function Settings() {
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
 
-          {/* Sendit Pro */}
-          <GlassCard 
-            className="p-6"
-            style={{ border: '2px solid #FFD700' }}
-          >
-            <h2 className="text-xl font-bold text-white mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Sendit Pro 🏔️
-            </h2>
-            <ul className="space-y-2 mb-4 text-sm" style={{ color: 'rgba(255,255,255,0.8)' }}>
-              <li>✓ Unlimited history</li>
-              <li>✓ Advanced stats & insights</li>
-              <li>✓ Priority support</li>
-            </ul>
-            <p className="text-lg font-bold mb-4" style={{ color: '#FFD700', fontFamily: 'JetBrains Mono, monospace' }}>
-              $9.99 / season
-            </p>
-            <button
-              data-testid="upgrade-pro"
-              onClick={() => setShowWaitlistModal(true)}
-              className="w-full py-3 rounded-full font-semibold"
-              style={{
-                backgroundColor: '#FFD700',
-                color: '#000000',
-                fontFamily: 'Manrope, sans-serif'
-              }}
-            >
-              Upgrade Now
-            </button>
-          </GlassCard>
-
           {/* Sign Out */}
           <button
             data-testid="sign-out"
@@ -300,67 +239,6 @@ export default function Settings() {
           </button>
         </div>
       </div>
-
-      {/* Waitlist Modal */}
-      {showWaitlistModal && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center p-4 z-50"
-          style={{ backgroundColor: 'rgba(18, 24, 27, 0.9)' }}
-          onClick={() => setShowWaitlistModal(false)}
-        >
-          <GlassCard 
-            className="p-6 max-w-md w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-bold text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Join Pro Waitlist
-            </h2>
-            <p className="text-sm mb-4" style={{ color: 'rgba(255,255,255,0.7)' }}>
-              We'll notify you when Sendit Pro launches!
-            </p>
-            <form onSubmit={handleWaitlistSubmit} className="space-y-4">
-              <input
-                type="email"
-                value={waitlistEmail}
-                onChange={(e) => setWaitlistEmail(e.target.value)}
-                placeholder="your.email@example.com"
-                required
-                className="w-full px-4 py-3 rounded-xl border-0 focus:outline-none focus:ring-2"
-                style={{
-                  backgroundColor: '#1A2126',
-                  color: 'white'
-                }}
-              />
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowWaitlistModal(false)}
-                  className="flex-1 py-3 rounded-full font-semibold"
-                  style={{
-                    backgroundColor: 'rgba(255,255,255,0.05)',
-                    color: 'rgba(255,255,255,0.7)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    fontFamily: 'Manrope, sans-serif'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 rounded-full font-semibold"
-                  style={{
-                    backgroundColor: '#00B4D8',
-                    color: '#000000',
-                    fontFamily: 'Manrope, sans-serif'
-                  }}
-                >
-                  Join Waitlist
-                </button>
-              </div>
-            </form>
-          </GlassCard>
-        </div>
-      )}
 
       <BottomNav />
     </div>

@@ -309,7 +309,7 @@ export default function History() {
               You're on a roll!
             </h3>
             <p className="text-sm mb-4" style={{ color: 'rgba(255,255,255,0.7)' }}>
-              Sendit Pro unlocks your full history.
+              PeakLap Pro unlocks your full history.
             </p>
             <button
               className="px-6 py-2 rounded-full font-semibold"

@@ -62,11 +62,11 @@ export default function Login() {
           >
             <img 
               src={LOGO_URL}
-              alt="Sendit Logo" 
+              alt="PeakLap Logo" 
               className="h-24 w-24 object-contain"
             />
             <p className="text-center text-xl font-bold mt-2" style={{ color: 'white', fontFamily: 'Manrope, sans-serif' }}>
-              Sendit
+              PeakLap
             </p>
           </Link>
         </div>

@@ -173,12 +173,27 @@ frontend:
     working: false
     file: "frontend/src/contexts/AuthContext.js, frontend/src/pages/Login.js"
     stuck_count: 0
-    priority: "high"
+    priority: "low"
     needs_retesting: false
     status_history:
       - working: false
         agent: "testing"
         comment: "UI testing revealed error toast during sign-in: 'Failed to execute 'json' on 'Response': body stream already read'. This error appears when attempting to sign in with test credentials (test@sendit.app). Auth code uses proper { data, error } destructuring, suggesting error may be related to Supabase configuration or invalid credentials. Note: REACT_APP_SUPABASE_ANON_KEY appears to use placeholder format (sb_publishable_...) instead of valid JWT token format. Cannot fully test Log Run functionality without authentication working."
+
+  - task: "Rebrand application from 'Sendit' to 'PeakLap'"
+    implemented: true
+    working: false
+    file: "frontend/public/index.html, frontend/src/components/Header.js, frontend/src/App.js, frontend/src/pages/Login.js, frontend/src/pages/Signup.js, frontend/src/pages/Settings.js, frontend/src/pages/History.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated all 'Sendit' references to 'PeakLap' across the application. Updated tagline to 'Every lap. Every peak. Every season.' in Signup page. Updated meta description in index.html. Removed entire 'Sendit Pro' upgrade section from Settings page including waitlist modal. Updated History.js to reference 'PeakLap Pro'. All code changes compiled successfully without errors."
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL BRANDING ISSUE FOUND: The logo image file itself (https://customer-assets.emergentagent.com/job_blackcomb-beta/artifacts/za2ypiek_SendItLogo.png) still contains 'SendIt' branding in the graphic. All CODE changes are correct: ✅ Login page shows 'PeakLap' text, correct alt text, and page title. ✅ Signup page shows 'Join PeakLap' heading, 'Every lap. Every peak. Every season.' tagline, correct alt text and page title. ✅ Meta tags updated (title='PeakLap', description includes PeakLap). ✅ No 'Sendit' text in any code files. ✅ Settings page code has no Pro upgrade section or waitlist modal (code review confirmed - only Profile, Season Goals, Region, Save Changes, Sign Out sections present). ⚠️ Settings page UI testing incomplete due to authentication issues (same Supabase credentials issue from previous tests). ✅ History.js correctly references 'PeakLap Pro' (this is expected - History page shows Pro upgrade prompt for limited history, which is different from removed Settings upgrade section). THE ONLY ISSUE: Logo image asset needs to be replaced with PeakLap logo. This is an asset issue, not a code issue."
 
 metadata:
   created_by: "main_agent"
@@ -196,15 +211,27 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: |
-      Fixed all Supabase calls across the codebase to use proper { data, error } destructuring pattern.
-      Key changes:
-      1. logRun function in hooks.js - removed array wrapper from insert, added robust error handling
-      2. All bucket_list operations now use try-catch with proper error extraction
-      3. syncNow, saveSummary, deleteLog functions updated with proper error handling
-      4. Settings waitlist and History deleteLog updated
+      REBRANDING COMPLETE - Sendit → PeakLap
       
-      All files pass linting. Frontend compiled successfully.
-      Please test the Log Run functionality to verify the fix.
+      Changes implemented:
+      1. Updated index.html: title, meta description, apple-mobile-web-app-title to "PeakLap"
+      2. Updated Login page: logo alt text, brand name to "PeakLap"
+      3. Updated Signup page: logo alt text, brand name to "PeakLap", tagline to "Every lap. Every peak. Every season."
+      4. Updated Header.js: logo alt text to "PeakLap Logo"
+      5. Updated App.js: loading screen logo alt text to "PeakLap Logo"
+      6. Updated History.js: changed "Sendit Pro" to "PeakLap Pro"
+      7. REMOVED entire "Sendit Pro" upgrade section from Settings page (including waitlist modal, state, and handlers)
+      
+      Verification:
+      - Grep search confirms no remaining "Sendit" references in code
+      - Frontend compiled successfully with no errors
+      - Screenshots confirm Login and Signup pages show "PeakLap" branding and new tagline
+      
+      Please test:
+      1. Verify Login and Signup pages show "PeakLap" branding and tagline
+      2. Verify Settings page no longer shows "Sendit Pro" upgrade section
+      3. Check page title and meta tags are updated
+      4. Test navigation across all pages to ensure branding is consistent
   
   - agent: "testing"
     message: |
@@ -241,3 +268,44 @@ agent_communication:
       - Log Run testing: ⚠️ BLOCKED (requires valid authentication)
       
       The original issue reported in logRun has been properly fixed in code. However, a similar error appears in the authentication flow which prevents end-to-end testing of the Log Run feature.
+  
+  - agent: "testing"
+    message: |
+      REBRANDING TEST COMPLETE - CRITICAL ASSET ISSUE FOUND
+      
+      📋 TESTED AREAS:
+      ✅ Login page (/login)
+      ✅ Signup page (/signup)
+      ✅ Meta tags (HTML title, description, apple-mobile-app-title)
+      ✅ Code review of Settings page (no Pro upgrade section)
+      ✅ Code review of all files for "Sendit" references
+      ⚠️ Settings page UI (blocked by authentication issues)
+      
+      🎯 TEST RESULTS:
+      ✅ Page title: "PeakLap" (correct)
+      ✅ Logo alt text: "PeakLap Logo" (correct on all pages)
+      ✅ Login brand text: "PeakLap" (correct)
+      ✅ Signup heading: "Join PeakLap" (correct)
+      ✅ Signup tagline: "Every lap. Every peak. Every season." (correct)
+      ✅ Meta description includes "PeakLap" (correct)
+      ✅ Apple mobile web app title: "PeakLap" (correct)
+      ✅ No "Sendit" text in any code files (verified via grep)
+      ✅ Settings.js has no Pro upgrade section or waitlist modal (code review confirmed)
+      ✅ History.js correctly shows "PeakLap Pro" upgrade prompt (expected behavior)
+      
+      ❌ CRITICAL ISSUE - LOGO IMAGE ASSET:
+      The logo image file at https://customer-assets.emergentagent.com/job_blackcomb-beta/artifacts/za2ypiek_SendItLogo.png
+      still displays "SendIt" text in the actual graphic. This creates brand confusion because:
+      - The image shows "SendIt" logo
+      - Text below image says "PeakLap"
+      - Users see mixed branding
+      
+      This is NOT a code issue - all code references are correct. The logo image asset needs to be
+      replaced with a PeakLap logo file.
+      
+      ⚠️ AUTHENTICATION BLOCKER:
+      Cannot fully test Settings page UI due to same authentication issues from previous tests:
+      - test@peaklap.app credentials don't exist
+      - Supabase returns 400 errors for auth requests
+      - New account creation blocked by email validation
+      However, code review confirms Settings page implementation is correct.
