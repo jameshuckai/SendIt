@@ -15,8 +15,17 @@ const STATUS_COLORS = {
   today: '#00E676',     // Green - logged today
   season: '#FFD700',    // Gold - logged this season
   historical: '#6B7280', // Grey - logged before this season
-  never: 'transparent'   // No indicator for never
+  never: 'transparent'
 };
+
+// Status filter options (same as Log page)
+const STATUS_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'today', label: 'Today' },
+  { key: 'season', label: 'Season' },
+  { key: 'lifetime', label: 'Lifetime' },
+  { key: 'never', label: 'Never Skied' }
+];
 
 // Helper to check if date is today
 const isToday = (date) => {
@@ -30,11 +39,10 @@ const isThisSeason = (date) => {
   const checkDate = new Date(date);
   const now = new Date();
   
-  // Determine current season start
   let seasonStart;
-  if (now.getMonth() >= 9) { // Oct-Dec: season started this year
-    seasonStart = new Date(now.getFullYear(), 9, 1); // Oct 1
-  } else { // Jan-Sep: season started last year
+  if (now.getMonth() >= 9) {
+    seasonStart = new Date(now.getFullYear(), 9, 1);
+  } else {
     seasonStart = new Date(now.getFullYear() - 1, 9, 1);
   }
   
@@ -47,13 +55,13 @@ export default function Resorts() {
   const navigate = useNavigate();
   
   // View mode state
-  const [viewMode, setViewMode] = useState('runs'); // 'runs' or 'lifts'
+  const [viewMode, setViewMode] = useState('runs');
   
   // Runs state
   const [runs, setRuns] = useState([]);
   const [filteredRuns, setFilteredRuns] = useState([]);
   const [bucketListIds, setBucketListIds] = useState([]);
-  const [userLogs, setUserLogs] = useState([]); // Full logs with dates
+  const [userLogs, setUserLogs] = useState([]);
   
   // Lifts state
   const [lifts, setLifts] = useState([]);
@@ -64,6 +72,7 @@ export default function Resorts() {
   const [difficultyFilter, setDifficultyFilter] = useState('');
   const [mountainFilter, setMountainFilter] = useState('');
   const [runTypeFilter, setRunTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   
   // Refs to prevent duplicate fetches
   const runsLoadedForRef = useRef(null);
@@ -76,24 +85,17 @@ export default function Resorts() {
     const zones = new Set();
     runs.forEach(run => {
       if (run.zone) {
-        // Extract mountain name from zone (e.g., "Whistler - Peak" -> "Whistler")
-        // Or check common patterns
         const zone = run.zone.toLowerCase();
-        
-        // Whistler zones
         if (zone.includes('peak') || zone.includes('harmony') || zone.includes('symphony') || 
             zone.includes('west bowl') || zone.includes('flute')) {
           zones.add('Whistler');
         }
-        // Blackcomb zones  
         else if (zone.includes('glacier') || zone.includes('7th heaven') || zone.includes('showcase') ||
                  zone.includes('crystal') || zone.includes('garbanzo') || zone.includes('jersey cream') ||
                  zone.includes('blackcomb')) {
           zones.add('Blackcomb');
         }
-        // Generic - use zone name as mountain
         else {
-          // Try to extract a mountain name
           const parts = run.zone.split(/[-–]/);
           if (parts.length > 1) {
             zones.add(parts[0].trim());
@@ -104,7 +106,6 @@ export default function Resorts() {
     return Array.from(zones).sort();
   }, [runs]);
 
-  // Check if resort has multiple mountains
   const hasMultipleMountains = mountains.length > 1;
 
   const loadRuns = useCallback(async () => {
@@ -175,25 +176,13 @@ export default function Resorts() {
     const runLogs = userLogs.filter(log => log.run_id === runId);
     
     if (runLogs.length === 0) return 'never';
-    
-    // Check if logged today
-    if (runLogs.some(log => isToday(log.logged_at))) {
-      return 'today';
-    }
-    
-    // Check if logged this season
-    if (runLogs.some(log => isThisSeason(log.logged_at))) {
-      return 'season';
-    }
-    
-    // Logged in past seasons
+    if (runLogs.some(log => isToday(log.logged_at))) return 'today';
+    if (runLogs.some(log => isThisSeason(log.logged_at))) return 'season';
     return 'historical';
   }, [userLogs]);
 
-  // Load data when selected resort changes
   useEffect(() => {
     if (selectedResort?.id) {
-      // Reset refs if resort changed
       if (runsLoadedForRef.current !== selectedResort.id) {
         runsLoadedForRef.current = null;
         liftsLoadedForRef.current = null;
@@ -204,7 +193,6 @@ export default function Resorts() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedResort?.id]);
 
-  // Load user data when profile becomes available
   useEffect(() => {
     if (profile?.id) {
       loadBucketList();
@@ -213,7 +201,6 @@ export default function Resorts() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
 
-  // Filter when criteria change
   useEffect(() => {
     if (viewMode === 'runs') {
       filterRuns();
@@ -221,7 +208,7 @@ export default function Resorts() {
       filterLifts();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runs, lifts, searchQuery, difficultyFilter, mountainFilter, runTypeFilter, viewMode]);
+  }, [runs, lifts, searchQuery, difficultyFilter, mountainFilter, runTypeFilter, statusFilter, viewMode, userLogs]);
 
   const filterRuns = () => {
     let filtered = runs;
@@ -241,7 +228,6 @@ export default function Resorts() {
     }
 
     if (mountainFilter) {
-      // Filter by zone/mountain
       const whistlerZones = ['peak', 'harmony', 'symphony', 'west bowl', 'flute'];
       const blackcombZones = ['glacier', '7th heaven', 'showcase', 'crystal', 'garbanzo', 'jersey cream', 'blackcomb'];
       
@@ -254,11 +240,22 @@ export default function Resorts() {
           run.zone && blackcombZones.some(z => run.zone.toLowerCase().includes(z))
         );
       } else {
-        // Generic filter by zone name containing mountain name
         filtered = filtered.filter(run => 
           run.zone && run.zone.toLowerCase().includes(mountainFilter.toLowerCase())
         );
       }
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(run => {
+        const status = getRunStatus(run.id);
+        if (statusFilter === 'today') return status === 'today';
+        if (statusFilter === 'season') return status === 'season' || status === 'today';
+        if (statusFilter === 'lifetime') return status !== 'never';
+        if (statusFilter === 'never') return status === 'never';
+        return true;
+      });
     }
 
     setFilteredRuns(filtered);
@@ -266,19 +263,16 @@ export default function Resorts() {
 
   const filterLifts = () => {
     let filtered = lifts;
-
     if (searchQuery) {
       filtered = filtered.filter(lift => 
         lift.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-
     setFilteredLifts(filtered);
   };
 
   const toggleBucketList = async (runId) => {
     if (!profile) return;
-
     try {
       if (bucketListIds.includes(runId)) {
         const { error } = await supabase
@@ -286,38 +280,21 @@ export default function Resorts() {
           .delete()
           .eq('user_id', profile.id)
           .eq('run_id', runId);
-        
-        if (error) {
-          console.error('Error removing from bucket list:', error);
-          return;
-        }
-        setBucketListIds(bucketListIds.filter(id => id !== runId));
+        if (!error) setBucketListIds(bucketListIds.filter(id => id !== runId));
       } else {
         const { error } = await supabase
           .from('bucket_list')
           .insert({ user_id: profile.id, run_id: runId });
-        
-        if (error) {
-          console.error('Error adding to bucket list:', error);
-          return;
-        }
-        setBucketListIds([...bucketListIds, runId]);
+        if (!error) setBucketListIds([...bucketListIds, runId]);
       }
     } catch (err) {
       console.error('Error toggling bucket list:', err);
     }
   };
 
-  // Status badge component
   const StatusBadge = ({ status }) => {
     if (status === 'never') return null;
-    
-    const labels = {
-      today: 'Today',
-      season: 'This Season',
-      historical: 'Past Season'
-    };
-    
+    const labels = { today: 'Today', season: 'This Season', historical: 'Past Season' };
     return (
       <span 
         className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
@@ -337,7 +314,6 @@ export default function Resorts() {
       <Header />
       
       <div className="px-6 pt-4">
-        {/* Resort Info Display - Now controlled by header chip */}
         {selectedResort && (
           <div className="mb-4">
             <GlassCard className="px-4 py-3">
@@ -358,7 +334,6 @@ export default function Resorts() {
           </div>
         )}
 
-        {/* Trail Map - Large interactive map */}
         {selectedResort && (
           <div className="mb-4">
             <TrailMap 
@@ -371,7 +346,6 @@ export default function Resorts() {
           </div>
         )}
 
-        {/* No Resort Selected */}
         {!selectedResort && (
           <div className="text-center py-12">
             <Mountain size={48} className="mx-auto mb-4" style={{ color: 'rgba(255,255,255,0.2)' }} />
@@ -385,7 +359,6 @@ export default function Resorts() {
         <div className="mb-4">
           <div className="flex gap-2">
             <button
-              data-testid="view-runs"
               onClick={() => setViewMode('runs')}
               className="flex-1 py-2 rounded-full text-sm font-semibold transition-all"
               style={{
@@ -398,7 +371,6 @@ export default function Resorts() {
               Runs ({runs.length})
             </button>
             <button
-              data-testid="view-lifts"
               onClick={() => setViewMode('lifts')}
               className="flex-1 py-2 rounded-full text-sm font-semibold transition-all"
               style={{
@@ -417,93 +389,98 @@ export default function Resorts() {
         <div className="relative mb-4">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.4)' }} />
           <input
-            data-testid="search-input"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={`Search ${viewMode}...`}
-            className="w-full pl-10 pr-4 py-3 rounded-xl border-0 focus:outline-none focus:ring-2"
-            style={{
-              backgroundColor: '#1A2126',
-              color: 'white',
-              focusRing: '#00B4D8'
-            }}
+            className="w-full pl-10 pr-4 py-3 rounded-xl border-0 focus:outline-none focus:ring-2 focus:ring-[#00B4D8]"
+            style={{ backgroundColor: '#1A2126', color: 'white' }}
           />
         </div>
 
         {/* Filters (only for runs view) */}
         {viewMode === 'runs' && (
         <div className="space-y-3 mb-4">
-          {/* Mountain Filter - Only show if multiple mountains */}
-          {hasMultipleMountains && (
-            <div>
-              <p className="text-xs font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'Manrope, sans-serif' }}>
-                Mountain
-              </p>
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {mountains.map((mountain) => (
-                  <button
-                    key={mountain}
-                    data-testid={`filter-mountain-${mountain.toLowerCase()}`}
-                    onClick={() => setMountainFilter(mountainFilter === mountain ? '' : mountain)}
-                    className="px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
-                    style={{
-                      backgroundColor: mountainFilter === mountain ? '#00B4D8' : 'rgba(255,255,255,0.05)',
-                      color: mountainFilter === mountain ? '#000000' : 'rgba(255,255,255,0.7)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      fontFamily: 'Manrope, sans-serif'
-                    }}
-                  >
-                    <Mountain size={12} className="inline mr-1.5" style={{ marginTop: -2 }} />
-                    {mountain}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Difficulty Filter */}
-          <div>
-            <p className="text-xs font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'Manrope, sans-serif' }}>
-              Difficulty
-            </p>
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {['easy', 'intermediate', 'advanced', 'expert', 'park'].map((diff) => (
-                <button
-                  key={diff}
-                  data-testid={`filter-difficulty-${diff}`}
-                  onClick={() => setDifficultyFilter(difficultyFilter === diff ? '' : diff)}
-                  className={`transition-all ${difficultyFilter === diff ? 'ring-2 ring-white' : ''}`}
-                >
-                  <DifficultyBadge difficulty={diff} region={profile?.difficulty_region || 'NA'} />
-                </button>
-              ))}
-            </div>
+          {/* Row 1: Mountain, Difficulty, Type - all on one row */}
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {/* Mountain filters (if multiple) */}
+            {hasMultipleMountains && mountains.map((mountain) => (
+              <button
+                key={mountain}
+                onClick={() => setMountainFilter(mountainFilter === mountain ? '' : mountain)}
+                className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1"
+                style={{
+                  backgroundColor: mountainFilter === mountain ? '#00B4D8' : 'rgba(255,255,255,0.05)',
+                  color: mountainFilter === mountain ? '#000000' : 'rgba(255,255,255,0.7)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  fontFamily: 'Manrope, sans-serif'
+                }}
+              >
+                <Mountain size={10} />
+                {mountain}
+              </button>
+            ))}
+            
+            {/* Divider if mountains exist */}
+            {hasMultipleMountains && (
+              <div className="w-px h-6 my-auto" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
+            )}
+            
+            {/* Difficulty filters */}
+            {['easy', 'intermediate', 'advanced', 'expert'].map((diff) => (
+              <button
+                key={diff}
+                onClick={() => setDifficultyFilter(difficultyFilter === diff ? '' : diff)}
+                className={`transition-all ${difficultyFilter === diff ? 'ring-2 ring-white' : ''}`}
+              >
+                <DifficultyBadge difficulty={diff} region={profile?.difficulty_region || 'NA'} />
+              </button>
+            ))}
+            
+            {/* Divider */}
+            <div className="w-px h-6 my-auto" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
+            
+            {/* Run type filters */}
+            {['groomed', 'moguls', 'trees'].map((type) => (
+              <button
+                key={type}
+                onClick={() => setRunTypeFilter(runTypeFilter === type ? '' : type)}
+                className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
+                style={{
+                  backgroundColor: runTypeFilter === type ? '#00B4D8' : 'rgba(255,255,255,0.05)',
+                  color: runTypeFilter === type ? '#000000' : 'rgba(255,255,255,0.7)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  fontFamily: 'Manrope, sans-serif'
+                }}
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </button>
+            ))}
           </div>
 
-          {/* Run Type Filter */}
-          <div>
-            <p className="text-xs font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'Manrope, sans-serif' }}>
-              Type
-            </p>
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {['groomed', 'moguls', 'trees', 'park'].map((type) => (
-                <button
-                  key={type}
-                  data-testid={`filter-type-${type}`}
-                  onClick={() => setRunTypeFilter(runTypeFilter === type ? '' : type)}
-                  className="px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
-                  style={{
-                    backgroundColor: runTypeFilter === type ? '#00B4D8' : 'rgba(255,255,255,0.05)',
-                    color: runTypeFilter === type ? '#000000' : 'rgba(255,255,255,0.7)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    fontFamily: 'Manrope, sans-serif'
-                  }}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </button>
-              ))}
-            </div>
+          {/* Row 2: My Status filter */}
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {STATUS_FILTERS.map(f => (
+              <button
+                key={f.key}
+                onClick={() => setStatusFilter(f.key)}
+                className="px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
+                style={{
+                  backgroundColor: statusFilter === f.key ? '#00B4D8' : 'rgba(255,255,255,0.05)',
+                  color: statusFilter === f.key ? '#000000' : 'rgba(255,255,255,0.7)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  fontFamily: 'Manrope, sans-serif'
+                }}
+              >
+                {f.label}
+                {f.key === 'today' && statusFilter !== 'today' && (
+                  <span className="ml-1.5 w-2 h-2 rounded-full inline-block" style={{ backgroundColor: STATUS_COLORS.today }} />
+                )}
+                {f.key === 'season' && statusFilter !== 'season' && (
+                  <span className="ml-1.5 w-2 h-2 rounded-full inline-block" style={{ backgroundColor: STATUS_COLORS.season }} />
+                )}
+              </button>
+            ))}
           </div>
         </div>
         )}
@@ -512,7 +489,6 @@ export default function Resorts() {
       {/* Content List */}
       <div className="px-6 space-y-3">
         {viewMode === 'runs' ? (
-          // Runs List
           filteredRuns.length === 0 ? (
           <GlassCard className="p-6 text-center">
             <p className="text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
@@ -527,7 +503,6 @@ export default function Resorts() {
               key={run.id} 
               className="p-4 cursor-pointer transition-all hover:bg-white/10"
               onClick={() => navigate(`/runs/${run.id}`)}
-              data-testid={`run-card-${run.id}`}
               style={{
                 borderLeft: status !== 'never' ? `3px solid ${STATUS_COLORS[status]}` : undefined
               }}
@@ -560,27 +535,20 @@ export default function Resorts() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Completed checkmark - show if done at any time */}
                   {status !== 'never' && (
                     <div 
                       className="p-2 rounded-full"
                       style={{ backgroundColor: `${STATUS_COLORS[status]}20` }}
-                      data-testid={`completed-${run.id}`}
                     >
-                      <Check 
-                        size={20} 
-                        style={{ color: STATUS_COLORS[status] }}
-                      />
+                      <Check size={20} style={{ color: STATUS_COLORS[status] }} />
                     </div>
                   )}
-                  {/* Bucket list heart */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleBucketList(run.id);
                     }}
                     className="p-2"
-                    data-testid={`bucket-list-toggle-${run.id}`}
                   >
                     <Heart 
                       size={20} 
@@ -594,20 +562,13 @@ export default function Resorts() {
           )})
         )
         ) : (
-          // Lifts List
           filteredLifts.length === 0 ? (
             <GlassCard className="p-6 text-center">
-              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                No lifts found.
-              </p>
+              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>No lifts found.</p>
             </GlassCard>
           ) : (
             filteredLifts.map((lift) => (
-              <GlassCard 
-                key={lift.id} 
-                className="p-4"
-                data-testid={`lift-card-${lift.id}`}
-              >
+              <GlassCard key={lift.id} className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h3 className="text-base font-semibold text-white mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
@@ -621,12 +582,7 @@ export default function Resorts() {
                       )}
                       {lift.capacity && (
                         <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                          Capacity: {lift.capacity}/hr
-                        </span>
-                      )}
-                      {lift.occupancy && (
-                        <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                          {lift.occupancy} seats
+                          {lift.capacity}/hr
                         </span>
                       )}
                     </div>
