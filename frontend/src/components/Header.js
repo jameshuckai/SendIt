@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useResort } from '@/contexts/ResortContext';
-import { Settings, LogOut, ChevronDown, MapPin } from 'lucide-react';
+import { Settings, LogOut, ChevronDown, MapPin, Coffee, Lightbulb, Bug } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { ResortSelector } from './ResortSelector';
 
@@ -22,13 +22,18 @@ export function Header() {
   
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
+  const [showSupportMenu, setShowSupportMenu] = useState(false);
   const [showResortSelector, setShowResortSelector] = useState(false);
   const menuRef = useRef(null);
+  const supportMenuRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setShowMenu(false);
+      }
+      if (supportMenuRef.current && !supportMenuRef.current.contains(event.target)) {
+        setShowSupportMenu(false);
       }
     }
 
@@ -101,27 +106,99 @@ export function Header() {
           </button>
         </div>
 
-      {/* User Profile Menu */}
-      <div className="relative" ref={menuRef}>
-        <button
-          data-testid="user-menu-button"
-          onClick={() => setShowMenu(!showMenu)}
-          className="flex items-center gap-2 p-2 rounded-full transition-all"
-          style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
-        >
-          {/* Avatar */}
-          <div 
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold"
-            style={{ 
-              backgroundColor: '#00B4D8',
-              color: '#000000',
-              fontFamily: 'Manrope, sans-serif'
-            }}
+      {/* Right Side - Support Menu + User Profile */}
+      <div className="flex items-center gap-2">
+        {/* Support Menu - Coffee Icon */}
+        <div className="relative" ref={supportMenuRef}>
+          <button
+            data-testid="support-menu-button"
+            onClick={() => setShowSupportMenu(!showSupportMenu)}
+            className="p-2 rounded-full transition-all hover:bg-white/10"
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+            title="Support & Feedback"
           >
-            {getInitials()}
-          </div>
-          <ChevronDown size={16} style={{ color: 'rgba(255, 255, 255, 0.7)' }} />
-        </button>
+            <Coffee size={20} style={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+          </button>
+
+          {/* Support Dropdown */}
+          {showSupportMenu && (
+            <div className="absolute right-0 mt-2 w-56">
+              <GlassCard className="p-2">
+                <a
+                  href="https://buymeacoffee.com/peaklap"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowSupportMenu(false)}
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all"
+                  style={{ 
+                    backgroundColor: 'transparent',
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    textDecoration: 'none'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                >
+                  <Coffee size={18} style={{ color: '#FFDD57' }} />
+                  <span style={{ fontFamily: 'Manrope, sans-serif' }}>Support PeakLap</span>
+                </a>
+
+                <a
+                  href="mailto:info@peaklap.com?subject=Feature Request"
+                  onClick={() => setShowSupportMenu(false)}
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all"
+                  style={{ 
+                    backgroundColor: 'transparent',
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    textDecoration: 'none'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                >
+                  <Lightbulb size={18} style={{ color: '#00B4D8' }} />
+                  <span style={{ fontFamily: 'Manrope, sans-serif' }}>Request a Feature</span>
+                </a>
+
+                <a
+                  href="mailto:info@peaklap.com?subject=Bug Report"
+                  onClick={() => setShowSupportMenu(false)}
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all"
+                  style={{ 
+                    backgroundColor: 'transparent',
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    textDecoration: 'none'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                >
+                  <Bug size={18} style={{ color: '#FF5252' }} />
+                  <span style={{ fontFamily: 'Manrope, sans-serif' }}>Report a Bug</span>
+                </a>
+              </GlassCard>
+            </div>
+          )}
+        </div>
+
+        {/* User Profile Menu */}
+        <div className="relative" ref={menuRef}>
+          <button
+            data-testid="user-menu-button"
+            onClick={() => setShowMenu(!showMenu)}
+            className="flex items-center gap-2 p-2 rounded-full transition-all"
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+          >
+            {/* Avatar */}
+            <div 
+              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold"
+              style={{ 
+                backgroundColor: '#00B4D8',
+                color: '#000000',
+                fontFamily: 'Manrope, sans-serif'
+              }}
+            >
+              {getInitials()}
+            </div>
+            <ChevronDown size={16} style={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+          </button>
 
         {/* Dropdown Menu */}
         {showMenu && (
@@ -194,6 +271,7 @@ export function Header() {
             </GlassCard>
           </div>
         )}
+        </div>
       </div>
     </header>
 

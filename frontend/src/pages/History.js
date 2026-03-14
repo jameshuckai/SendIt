@@ -295,6 +295,39 @@ export default function History() {
           </div>
         )}
 
+        {/* Support Section - Show after days list if user has logged runs */}
+        {visibleDates.length > 0 && (
+          <GlassCard 
+            className="mt-6 p-6 text-center"
+            style={{ 
+              border: '1px solid rgba(255, 221, 87, 0.2)',
+              background: 'rgba(255, 221, 87, 0.03)'
+            }}
+          >
+            <div className="text-2xl mb-2">☕</div>
+            <h3 className="text-base font-semibold text-white mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              Enjoying PeakLap?
+            </h3>
+            <p className="text-sm mb-4" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              Keep the stoke going and support the project
+            </p>
+            <a
+              href="https://buymeacoffee.com/peaklap"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block px-6 py-2.5 rounded-full font-semibold transition-all hover:scale-105"
+              style={{
+                backgroundColor: '#FFDD57',
+                color: '#000000',
+                fontFamily: 'Manrope, sans-serif',
+                textDecoration: 'none'
+              }}
+            >
+              Buy Me a Coffee
+            </a>
+          </GlassCard>
+        )}
+
         {/* Premium Lock */}
         {isPremiumLocked && (
           <GlassCard 

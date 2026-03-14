@@ -4,7 +4,7 @@ import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { GlassCard } from '@/components/GlassCard';
 import { SnowStake } from '@/components/SnowStake';
-import { Minus, Plus, LogOut } from 'lucide-react';
+import { Minus, Plus, LogOut, Coffee, Lightbulb, Bug, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -203,6 +203,89 @@ export default function Settings() {
                   {r}
                 </button>
               ))}
+            </div>
+          </GlassCard>
+
+          {/* Support PeakLap Section */}
+          <GlassCard className="p-6">
+            <h2 className="text-lg font-bold text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              Support PeakLap
+            </h2>
+            <div className="space-y-3">
+              <a
+                href="https://buymeacoffee.com/peaklap"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 rounded-lg transition-all"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  textDecoration: 'none'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)'}
+              >
+                <div className="flex items-center gap-3">
+                  <Coffee size={20} style={{ color: '#FFDD57' }} />
+                  <div>
+                    <div className="text-sm font-semibold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                      Buy Me a Coffee
+                    </div>
+                    <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      Keep PeakLap running
+                    </div>
+                  </div>
+                </div>
+                <ExternalLink size={16} style={{ color: 'rgba(255,255,255,0.4)' }} />
+              </a>
+
+              <a
+                href="mailto:info@peaklap.com?subject=Feature Request"
+                className="flex items-center justify-between p-3 rounded-lg transition-all"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  textDecoration: 'none'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)'}
+              >
+                <div className="flex items-center gap-3">
+                  <Lightbulb size={20} style={{ color: '#00B4D8' }} />
+                  <div>
+                    <div className="text-sm font-semibold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                      Request a Feature
+                    </div>
+                    <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      Shape what gets built next
+                    </div>
+                  </div>
+                </div>
+              </a>
+
+              <a
+                href="mailto:info@peaklap.com?subject=Bug Report"
+                className="flex items-center justify-between p-3 rounded-lg transition-all"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  textDecoration: 'none'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)'}
+              >
+                <div className="flex items-center gap-3">
+                  <Bug size={20} style={{ color: '#FF5252' }} />
+                  <div>
+                    <div className="text-sm font-semibold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                      Report a Bug
+                    </div>
+                    <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      Help us fix it fast
+                    </div>
+                  </div>
+                </div>
+              </a>
             </div>
           </GlassCard>
 

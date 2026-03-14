@@ -90,6 +90,7 @@ export default function LogRun() {
     console.log('logRun result:', result);
     
     if (result.success) {
+      // Show success toast with run name
       toast.success(`Logged: ${run?.name || 'Run'} ✓`, {
         style: {
           background: 'rgba(26, 33, 38, 0.95)',
@@ -101,6 +102,39 @@ export default function LogRun() {
           fontFamily: 'Manrope, sans-serif',
         },
       });
+      
+      // Show support message after a short delay
+      setTimeout(() => {
+        toast(
+          <a 
+            href="https://buymeacoffee.com/peaklap" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ 
+              textDecoration: 'none', 
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <span>Enjoying PeakLap?</span>
+            <span style={{ color: '#FFDD57' }}>☕</span>
+            <span style={{ textDecoration: 'underline' }}>Buy me a coffee</span>
+          </a>,
+          {
+            duration: 5000,
+            style: {
+              background: 'rgba(26, 33, 38, 0.95)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 221, 87, 0.2)',
+              borderRadius: '12px',
+              color: 'white',
+              fontFamily: 'Manrope, sans-serif',
+            },
+          }
+        );
+      }, 1500);
       
       if (result.queued) {
         toast.info('Saved offline — will sync when connected', {
