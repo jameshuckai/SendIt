@@ -75,7 +75,7 @@ export function BottomNav() {
 
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 h-20 flex items-center justify-around px-4"
+      className="fixed bottom-0 left-0 right-0 h-20 flex items-center justify-around px-4 z-40"
       style={{
         backgroundColor: '#1A2126',
         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
