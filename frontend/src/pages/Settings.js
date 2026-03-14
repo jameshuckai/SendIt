@@ -147,33 +147,37 @@ export default function Settings() {
                 <label className="block text-sm font-medium mb-3 text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
                   Days This Season
                 </label>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center justify-center gap-4">
                   <button
                     onClick={() => setGoalDays(Math.max(0, goalDays - 1))}
-                    className="p-2 rounded-full"
+                    className="p-3 rounded-full transition-all active:scale-95 hover:bg-white/20"
                     style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
                   >
-                    <Minus size={20} style={{ color: 'white' }} />
+                    <Minus size={24} style={{ color: 'white' }} />
                   </button>
                   <input
                     type="number"
                     value={goalDays}
                     onChange={(e) => setGoalDays(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-24 text-center text-2xl font-bold bg-transparent border-b-2 focus:outline-none focus:border-blue-500"
+                    className="w-24 text-center text-3xl font-bold bg-transparent border-b-2 focus:outline-none focus:border-[#00B4D8] transition-colors"
                     style={{ 
                       fontFamily: 'JetBrains Mono, monospace',
                       color: 'white',
                       borderColor: 'rgba(255,255,255,0.2)'
                     }}
+                    min="0"
                   />
                   <button
                     onClick={() => setGoalDays(goalDays + 1)}
-                    className="p-2 rounded-full"
+                    className="p-3 rounded-full transition-all active:scale-95 hover:bg-white/20"
                     style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
                   >
-                    <Plus size={20} style={{ color: 'white' }} />
+                    <Plus size={24} style={{ color: 'white' }} />
                   </button>
                 </div>
+                <p className="text-xs text-center mt-2" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                  Tap the number to edit directly
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2 text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
