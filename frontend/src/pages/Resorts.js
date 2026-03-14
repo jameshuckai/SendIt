@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useResort } from '@/contexts/ResortContext';
@@ -10,9 +10,40 @@ import { TrailMap } from '@/components/TrailMap';
 import { supabase } from '@/lib/supabase';
 import { Search, Heart, Mountain, Check } from 'lucide-react';
 
+// Status colors matching RunChecklist
+const STATUS_COLORS = {
+  today: '#00E676',     // Green - logged today
+  season: '#FFD700',    // Gold - logged this season
+  historical: '#6B7280', // Grey - logged before this season
+  never: 'transparent'   // No indicator for never
+};
+
+// Helper to check if date is today
+const isToday = (date) => {
+  const today = new Date();
+  const checkDate = new Date(date);
+  return today.toDateString() === checkDate.toDateString();
+};
+
+// Helper to check if date is this season (Oct 1 - Apr 30)
+const isThisSeason = (date) => {
+  const checkDate = new Date(date);
+  const now = new Date();
+  
+  // Determine current season start
+  let seasonStart;
+  if (now.getMonth() >= 9) { // Oct-Dec: season started this year
+    seasonStart = new Date(now.getFullYear(), 9, 1); // Oct 1
+  } else { // Jan-Sep: season started last year
+    seasonStart = new Date(now.getFullYear() - 1, 9, 1);
+  }
+  
+  return checkDate >= seasonStart;
+};
+
 export default function Resorts() {
   const { profile } = useAuth();
-  const { selectedResort, allResorts } = useResort();
+  const { selectedResort } = useResort();
   const navigate = useNavigate();
   
   // View mode state
@@ -22,7 +53,7 @@ export default function Resorts() {
   const [runs, setRuns] = useState([]);
   const [filteredRuns, setFilteredRuns] = useState([]);
   const [bucketListIds, setBucketListIds] = useState([]);
-  const [completedRunIds, setCompletedRunIds] = useState([]);
+  const [userLogs, setUserLogs] = useState([]); // Full logs with dates
   
   // Lifts state
   const [lifts, setLifts] = useState([]);
@@ -38,7 +69,43 @@ export default function Resorts() {
   const runsLoadedForRef = useRef(null);
   const liftsLoadedForRef = useRef(null);
   const bucketLoadedRef = useRef(false);
-  const completedLoadedRef = useRef(false);
+  const logsLoadedRef = useRef(false);
+
+  // Get unique mountains/zones from runs
+  const mountains = useMemo(() => {
+    const zones = new Set();
+    runs.forEach(run => {
+      if (run.zone) {
+        // Extract mountain name from zone (e.g., "Whistler - Peak" -> "Whistler")
+        // Or check common patterns
+        const zone = run.zone.toLowerCase();
+        
+        // Whistler zones
+        if (zone.includes('peak') || zone.includes('harmony') || zone.includes('symphony') || 
+            zone.includes('west bowl') || zone.includes('flute')) {
+          zones.add('Whistler');
+        }
+        // Blackcomb zones  
+        else if (zone.includes('glacier') || zone.includes('7th heaven') || zone.includes('showcase') ||
+                 zone.includes('crystal') || zone.includes('garbanzo') || zone.includes('jersey cream') ||
+                 zone.includes('blackcomb')) {
+          zones.add('Blackcomb');
+        }
+        // Generic - use zone name as mountain
+        else {
+          // Try to extract a mountain name
+          const parts = run.zone.split(/[-–]/);
+          if (parts.length > 1) {
+            zones.add(parts[0].trim());
+          }
+        }
+      }
+    });
+    return Array.from(zones).sort();
+  }, [runs]);
+
+  // Check if resort has multiple mountains
+  const hasMultipleMountains = mountains.length > 1;
 
   const loadRuns = useCallback(async () => {
     if (!selectedResort?.id) return;
@@ -87,22 +154,41 @@ export default function Resorts() {
     }
   }, [profile?.id]);
 
-  const loadCompletedRuns = useCallback(async () => {
+  const loadUserLogs = useCallback(async () => {
     if (!profile?.id) return;
-    if (completedLoadedRef.current) return;
+    if (logsLoadedRef.current) return;
     
     const { data } = await supabase
       .from('user_logs')
-      .select('run_id')
-      .eq('user_id', profile.id);
+      .select('run_id, logged_at')
+      .eq('user_id', profile.id)
+      .order('logged_at', { ascending: false });
     
     if (data) {
-      // Get unique run IDs
-      const uniqueRunIds = [...new Set(data.map(item => item.run_id))];
-      setCompletedRunIds(uniqueRunIds);
-      completedLoadedRef.current = true;
+      setUserLogs(data);
+      logsLoadedRef.current = true;
     }
   }, [profile?.id]);
+
+  // Get run status based on user logs
+  const getRunStatus = useCallback((runId) => {
+    const runLogs = userLogs.filter(log => log.run_id === runId);
+    
+    if (runLogs.length === 0) return 'never';
+    
+    // Check if logged today
+    if (runLogs.some(log => isToday(log.logged_at))) {
+      return 'today';
+    }
+    
+    // Check if logged this season
+    if (runLogs.some(log => isThisSeason(log.logged_at))) {
+      return 'season';
+    }
+    
+    // Logged in past seasons
+    return 'historical';
+  }, [userLogs]);
 
   // Load data when selected resort changes
   useEffect(() => {
@@ -116,16 +202,16 @@ export default function Resorts() {
       loadLifts();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedResort?.id]); // Only depend on selectedResort.id primitive
+  }, [selectedResort?.id]);
 
   // Load user data when profile becomes available
   useEffect(() => {
     if (profile?.id) {
       loadBucketList();
-      loadCompletedRuns();
+      loadUserLogs();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.id]); // Only depend on profile.id primitive
+  }, [profile?.id]);
 
   // Filter when criteria change
   useEffect(() => {
@@ -151,22 +237,26 @@ export default function Resorts() {
     }
 
     if (runTypeFilter) {
-      filtered = filtered.filter(run => run.run_type === runTypeFilter);
+      filtered = filtered.filter(run => run.piste_type === runTypeFilter || run.run_type === runTypeFilter);
     }
 
     if (mountainFilter) {
-      // Check both zone field and ski_area_id for mountain
-      // Since all runs are from Whistler Blackcomb, filter by zone names
-      const whistlerZones = ['Peak', 'Harmony'];
-      const blackcombZones = ['Glacier', '7th Heaven', 'Showcase', 'Crystal', 'Garbanzo'];
+      // Filter by zone/mountain
+      const whistlerZones = ['peak', 'harmony', 'symphony', 'west bowl', 'flute'];
+      const blackcombZones = ['glacier', '7th heaven', 'showcase', 'crystal', 'garbanzo', 'jersey cream', 'blackcomb'];
       
       if (mountainFilter === 'Whistler') {
         filtered = filtered.filter(run => 
-          run.zone && whistlerZones.some(z => run.zone.includes(z))
+          run.zone && whistlerZones.some(z => run.zone.toLowerCase().includes(z))
         );
       } else if (mountainFilter === 'Blackcomb') {
         filtered = filtered.filter(run => 
-          run.zone && blackcombZones.some(z => run.zone.includes(z))
+          run.zone && blackcombZones.some(z => run.zone.toLowerCase().includes(z))
+        );
+      } else {
+        // Generic filter by zone name containing mountain name
+        filtered = filtered.filter(run => 
+          run.zone && run.zone.toLowerCase().includes(mountainFilter.toLowerCase())
         );
       }
     }
@@ -191,8 +281,6 @@ export default function Resorts() {
 
     try {
       if (bucketListIds.includes(runId)) {
-        // Use proper { data, error } destructuring
-        // NEVER call .json() or .text() on Supabase responses
         const { error } = await supabase
           .from('bucket_list')
           .delete()
@@ -205,7 +293,6 @@ export default function Resorts() {
         }
         setBucketListIds(bucketListIds.filter(id => id !== runId));
       } else {
-        // Use proper { data, error } destructuring
         const { error } = await supabase
           .from('bucket_list')
           .insert({ user_id: profile.id, run_id: runId });
@@ -221,16 +308,35 @@ export default function Resorts() {
     }
   };
 
+  // Status badge component
+  const StatusBadge = ({ status }) => {
+    if (status === 'never') return null;
+    
+    const labels = {
+      today: 'Today',
+      season: 'This Season',
+      historical: 'Past Season'
+    };
+    
+    return (
+      <span 
+        className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+        style={{ 
+          backgroundColor: `${STATUS_COLORS[status]}20`,
+          color: STATUS_COLORS[status],
+          border: `1px solid ${STATUS_COLORS[status]}40`
+        }}
+      >
+        {labels[status]}
+      </span>
+    );
+  };
+
   return (
-    <div className="min-h-screen pb-24" style={{ backgroundColor: '#12181B' }} data-testid="run-directory-page">
+    <div className="min-h-screen pb-24" style={{ backgroundColor: '#12181B' }}>
       <Header />
       
-      {/* Header */}
-      <div className="p-6 pb-4">
-        <h1 className="text-2xl font-bold text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-          Resorts
-        </h1>
-
+      <div className="px-6 pt-4">
         {/* Resort Info Display - Now controlled by header chip */}
         {selectedResort && (
           <div className="mb-4">
@@ -265,8 +371,10 @@ export default function Resorts() {
           </div>
         )}
 
+        {/* No Resort Selected */}
         {!selectedResort && (
-          <div className="mb-4 text-center py-8">
+          <div className="text-center py-12">
+            <Mountain size={48} className="mx-auto mb-4" style={{ color: 'rgba(255,255,255,0.2)' }} />
             <p className="text-white/60" style={{ fontFamily: 'Manrope, sans-serif' }}>
               Tap the resort chip in the header to select a resort
             </p>
@@ -325,54 +433,77 @@ export default function Resorts() {
 
         {/* Filters (only for runs view) */}
         {viewMode === 'runs' && (
-        <div className="space-y-3">
+        <div className="space-y-3 mb-4">
+          {/* Mountain Filter - Only show if multiple mountains */}
+          {hasMultipleMountains && (
+            <div>
+              <p className="text-xs font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'Manrope, sans-serif' }}>
+                Mountain
+              </p>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {mountains.map((mountain) => (
+                  <button
+                    key={mountain}
+                    data-testid={`filter-mountain-${mountain.toLowerCase()}`}
+                    onClick={() => setMountainFilter(mountainFilter === mountain ? '' : mountain)}
+                    className="px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
+                    style={{
+                      backgroundColor: mountainFilter === mountain ? '#00B4D8' : 'rgba(255,255,255,0.05)',
+                      color: mountainFilter === mountain ? '#000000' : 'rgba(255,255,255,0.7)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      fontFamily: 'Manrope, sans-serif'
+                    }}
+                  >
+                    <Mountain size={12} className="inline mr-1.5" style={{ marginTop: -2 }} />
+                    {mountain}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Difficulty Filter */}
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {['easy', 'intermediate', 'advanced', 'expert', 'park'].map((diff) => (
-              <button
-                key={diff}
-                data-testid={`filter-difficulty-${diff}`}
-                onClick={() => setDifficultyFilter(difficultyFilter === diff ? '' : diff)}
-                className={difficultyFilter === diff ? 'ring-2 ring-white' : ''}
-              >
-                <DifficultyBadge difficulty={diff} region={profile?.difficulty_region || 'NA'} />
-              </button>
-            ))}
+          <div>
+            <p className="text-xs font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'Manrope, sans-serif' }}>
+              Difficulty
+            </p>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {['easy', 'intermediate', 'advanced', 'expert', 'park'].map((diff) => (
+                <button
+                  key={diff}
+                  data-testid={`filter-difficulty-${diff}`}
+                  onClick={() => setDifficultyFilter(difficultyFilter === diff ? '' : diff)}
+                  className={`transition-all ${difficultyFilter === diff ? 'ring-2 ring-white' : ''}`}
+                >
+                  <DifficultyBadge difficulty={diff} region={profile?.difficulty_region || 'NA'} />
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Mountain & Run Type Filters */}
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {['Whistler', 'Blackcomb'].map((mountain) => (
-              <button
-                key={mountain}
-                data-testid={`filter-mountain-${mountain.toLowerCase()}`}
-                onClick={() => setMountainFilter(mountainFilter === mountain ? '' : mountain)}
-                className="px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
-                style={{
-                  backgroundColor: mountainFilter === mountain ? '#00B4D8' : 'rgba(255,255,255,0.05)',
-                  color: mountainFilter === mountain ? '#000000' : 'rgba(255,255,255,0.7)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  fontFamily: 'Manrope, sans-serif'
-                }}
-              >
-                {mountain}
-              </button>
-            ))}
-            {['groomed', 'moguls', 'trees'].map((type) => (
-              <button
-                key={type}
-                onClick={() => setRunTypeFilter(runTypeFilter === type ? '' : type)}
-                className="px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
-                style={{
-                  backgroundColor: runTypeFilter === type ? '#00B4D8' : 'rgba(255,255,255,0.05)',
-                  color: runTypeFilter === type ? '#000000' : 'rgba(255,255,255,0.7)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  fontFamily: 'Manrope, sans-serif'
-                }}
-              >
-                {type.charAt(0).toUpperCase() + type.slice(1)}
-              </button>
-            ))}
+          {/* Run Type Filter */}
+          <div>
+            <p className="text-xs font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'Manrope, sans-serif' }}>
+              Type
+            </p>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {['groomed', 'moguls', 'trees', 'park'].map((type) => (
+                <button
+                  key={type}
+                  data-testid={`filter-type-${type}`}
+                  onClick={() => setRunTypeFilter(runTypeFilter === type ? '' : type)}
+                  className="px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
+                  style={{
+                    backgroundColor: runTypeFilter === type ? '#00B4D8' : 'rgba(255,255,255,0.05)',
+                    color: runTypeFilter === type ? '#000000' : 'rgba(255,255,255,0.7)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    fontFamily: 'Manrope, sans-serif'
+                  }}
+                >
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         )}
@@ -389,18 +520,26 @@ export default function Resorts() {
             </p>
           </GlassCard>
         ) : (
-          filteredRuns.map((run) => (
+          filteredRuns.map((run) => {
+            const status = getRunStatus(run.id);
+            return (
             <GlassCard 
               key={run.id} 
               className="p-4 cursor-pointer transition-all hover:bg-white/10"
               onClick={() => navigate(`/runs/${run.id}`)}
               data-testid={`run-card-${run.id}`}
+              style={{
+                borderLeft: status !== 'never' ? `3px solid ${STATUS_COLORS[status]}` : undefined
+              }}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-white mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                    {run.name}
-                  </h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-base font-semibold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                      {run.name}
+                    </h3>
+                    <StatusBadge status={status} />
+                  </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     {run.difficulty && (
                       <DifficultyBadge difficulty={run.difficulty} region={profile?.difficulty_region} />
@@ -421,16 +560,16 @@ export default function Resorts() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Completed checkmark */}
-                  {completedRunIds.includes(run.id) && (
+                  {/* Completed checkmark - show if done at any time */}
+                  {status !== 'never' && (
                     <div 
                       className="p-2 rounded-full"
-                      style={{ backgroundColor: 'rgba(0, 230, 118, 0.2)' }}
+                      style={{ backgroundColor: `${STATUS_COLORS[status]}20` }}
                       data-testid={`completed-${run.id}`}
                     >
                       <Check 
                         size={20} 
-                        style={{ color: '#00E676' }}
+                        style={{ color: STATUS_COLORS[status] }}
                       />
                     </div>
                   )}
@@ -452,7 +591,7 @@ export default function Resorts() {
                 </div>
               </div>
             </GlassCard>
-          ))
+          )})
         )
         ) : (
           // Lifts List
